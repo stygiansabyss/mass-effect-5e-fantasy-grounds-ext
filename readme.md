@@ -19,3 +19,4 @@ This extension only aims to make using fantasy grounds easier for anyone followi
 
 While there is a long list of what I want it to do, currently all it does is add Paragon/Renegade sections to the character sheet notes section.
 
+![image](https://github.com/user-attachments/assets/cfa834a0-f5f8-4698-a56f-f95b31bd1d46)
