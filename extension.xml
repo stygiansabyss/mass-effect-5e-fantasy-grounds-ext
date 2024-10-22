@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<root version="3.0">
+
+    <properties>
+        <name>Feature: Mass Effect 5e</name>
+        <version>~dev-version~</version>
+        <loadorder>99</loadorder>
+        <description>
+            <text>Conversion system for the Mass Effect universe using DnD 5e rules.</text>
+            <website>https://www.n7.world</website>
+            <author>Stygian</author>
+        </description>
+        <ruleset>
+            <name>5E</name>
+        </ruleset>
+    </properties>
+
+    <announcement text="Mass Effect 5e\rMaintained by Stygian \r\nRules found at https://www.n7.world" font="emotefont" icon="me5e" />
+    <base>
+        <icon name="me5e" file="graphics/icons/me5e.png" />
+
+        <!-- <script name="EffectManagerADND" file="scripts/manager_effect_adnd.lua" />-->
+
+        <includefile source="strings/strings.xml" />
+        <includefile source="campaign/record_char_notes.xml" /> -->
+    </base>
+</root>

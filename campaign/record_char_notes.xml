@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<!-- 
+  Please see the license.html file included with this distribution for 
+  attribution and copyright information.
+-->
+
+<root>	
+	<windowclass name="charsheet_notes_details" merge="join">
+		<sheetdata>
+
+			<header_content_framed_metalplate name="reputation" />
+			<area_content_top name="details3">
+				<anchored height="20" />
+			</area_content_top>
+			<stringu name="paragon">
+				<anchored to="details3" position="insidetopleft" offset="10,0" height="20">
+					<right anchor="center" offset="-5" />
+				</anchored>
+			</stringu>
+			<label_charfieldtop>
+				<anchored to="paragon" offset="0,5" />
+				<static textres="char_label_paragon" />
+			</label_charfieldtop>
+			<stringu name="renegade">
+				<anchored to="details3" position="insidetopright" offset="10,0" height="20">
+					<left anchor="center" offset="5" />
+				</anchored>
+			</stringu>
+			<label_charfieldtop>
+				<anchored to="renegade" offset="0,5" />
+				<static textres="char_label_renegade" />
+			</label_charfieldtop>
+		</sheetdata>
+	</windowclass>
+</root>
