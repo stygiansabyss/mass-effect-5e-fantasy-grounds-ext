@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<root>
+    <windowclass name="item_main_armor" merge="join">
+        <script>
+            function update(bReadOnly, bID)
+                local tFields = { "bonus", "ac", "shield_max", "shield_regen", "dexbonus", "strength", "stealth", };
+                WindowManager.callSafeControlsUpdate(self, tFields, bReadOnly, not bID);
+
+                local bIs2024 = (DB.getValue(getDatabaseNode(), "version", "") == "2024");
+                WindowManager.callSafeControlUpdate(self, "properties", bReadOnly, not bID or bIs2024);
+
+                parentcontrol.setVisible(WindowManager.getAnyControlVisible(self, tFields));
+            end
+        </script>
+        <sheetdata>
+            <label_content_column name="shield_max_label">
+                <static textres="item_label_shield_max"/>
+            </label_content_column>
+            <number_content_column name="shield_max">
+                <delaykeyupdate/>
+            </number_content_column>
+
+            <label_content_column name="shield_regen_label">
+                <static textres="item_label_shield_regen"/>
+            </label_content_column>
+            <number_content_column name="shield_regen">
+                <delaykeyupdate/>
+            </number_content_column>
+        </sheetdata>
+    </windowclass>
+</root>

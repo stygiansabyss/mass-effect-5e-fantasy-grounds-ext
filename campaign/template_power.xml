@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<root>
+    <template name="cycler_power" merge="join">
+        <button_stringcycler>
+            <anchored width="50" height="20" />
+            <parameters>
+                <defaultlabelres>dash</defaultlabelres>
+                <labelsres>base|str|dex|con|int|wis|cha|prof|lvl|class_short_adept|class_short_engineer|class_short_experiment|class_short_explorer|class_short_infiltrator|class_short_musician|class_short_sentinel|class_short_soldier|class_short_tracker|class_short_vanguard</labelsres>
+                <values>base|strength|dexterity|constitution|intelligence|wisdom|charisma|prf|level|adept|engineer|experiment|explorer|infiltrator|musician|sentinel|soldier|tracker|vanguard</values>
+            </parameters>
+        </button_stringcycler>
+    </template>
+</root>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<!--
+  Please see the license.html file included with this distribution for
+  attribution and copyright information.
+-->
+
+<root>
+    <windowclass name="client_ct_entry" merge="join">
+        <script file="ct/scripts/clientct_entry.lua" />
+        <sheetdata>
+            <!-- For detailed views -->
+            <number_clientct_shields name="shields" insertbefore="initresult" />
+            <number_clientct_tech_armor name="tech_armor_hp" insertbefore="initresult" />
+            <number_clientct_barrier name="barrier" insertbefore="initresult" />
+
+            <!-- For status views -->
+            <string_clientct_shields_status name="shields_status" insertbefore="initresult" />
+            <string_clientct_tech_armor_status name="tech_armor_status" insertbefore="initresult" />
+            <string_clientct_barrier_status name="barrier_status" insertbefore="initresult" />
+        </sheetdata>
+    </windowclass>
+</root>

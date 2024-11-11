@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<root>
+    <windowclass name="charsheet_actions_contents" merge="join">
+        <sheetdata>
+
+            <label_charframetop name="defense_header" insertbefore="spellslots_prep" >
+                <anchored to="contentanchor" height="20">
+                    <top relation="relative" offset="8" postoffset="8"/>
+                    <left offset="15"/>
+                    <right offset="-10"/>
+                </anchored>
+                <icons>char_attacks</icons>
+                <static textres="char_label_defenses"/>
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        local bVisible = window.defenses.isVisible ();
+                        if bVisible then
+                            setFont("subwindowsmalltitle_disabled");
+                            window.defenses.setVisible(false);
+                        else
+                            setFont("subwindowsmalltitle");
+                            window.defenses.setVisible(true);
+                        end
+                        return true;
+                    end
+                </script>
+            </label_charframetop>
+
+<!--            <list_content_noscroll_top name="defenses">-->
+<!--                <datasource>.weaponlist</datasource>-->
+<!--                <class>char_defense</class>-->
+<!--                <sortby><control>name</control></sortby>-->
+<!--                <allowdelete />-->
+<!--                <script file="campaign/scripts/char_defenselist.lua" />-->
+<!--            </list_content_noscroll_top>-->
+        </sheetdata>
+    </windowclass>
+</root>

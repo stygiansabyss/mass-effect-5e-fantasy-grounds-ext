@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<!--
+  Please see the license.html file included with this distribution for
+  attribution and copyright information.
+-->
+
+<root>
+    <windowclass name="sub_ct_header_host" merge="join">
+        <sheetdata>
+            <label_ct_header_right name="label_shields" insertbefore="label_init">
+                <static textres="ct_label_shields"/>
+                <tooltip textres="ct_tooltip_shields"/>
+            </label_ct_header_right>
+            <label_ct_header_right name="label_tech_armor" insertbefore="label_init">
+                <static textres="ct_label_tech_armor"/>
+                <tooltip textres="ct_tooltip_tech_armor"/>
+            </label_ct_header_right>
+            <label_ct_header_right name="label_barrier" insertbefore="label_init">
+                <static textres="ct_label_barrier"/>
+                <tooltip textres="ct_tooltip_barrier"/>
+            </label_ct_header_right>
+        </sheetdata>
+    </windowclass>
+</root>

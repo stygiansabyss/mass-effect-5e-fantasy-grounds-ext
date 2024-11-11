@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+
+<root>
+    <template name="number_clientct_shields">
+        <number_ct_static name="shields">
+            <anchored to="rightanchor" width="30" height="20">
+                <top />
+                <right anchor="left" relation="relative" offset="-10" />
+            </anchored>
+            <min value="0" />
+            <script>
+                function onInit()
+                    setColor("FF61FFF9");
+                end
+            </script>
+        </number_ct_static>
+    </template>
+    <template name="number_clientct_tech_armor">
+        <number_ct_static name="tech_armor_hp">
+            <anchored to="rightanchor" width="30" height="20">
+                <top />
+                <right anchor="left" relation="relative" offset="-10" />
+            </anchored>
+            <script>
+                function onInit()
+                    setColor("FFECFF8D");
+                end
+            </script>
+        </number_ct_static>
+    </template>
+    <template name="number_clientct_barrier">
+        <number_ct_static name="barrier">
+            <anchored to="rightanchor" width="30" height="20">
+                <top />
+                <right anchor="left" relation="relative" offset="-10" />
+            </anchored>
+            <script>
+                function onInit()
+                    setColor("FFCAB9FF");
+                end
+            </script>
+        </number_ct_static>
+    </template>
+
+    <template name="string_clientct_shields_status">
+        <string_static name="shields_status">
+            <anchored to="rightanchor" width="30" height="20">
+                <top />
+                <right anchor="left" relation="relative" offset="-10" />
+            </anchored>
+            <center />
+            <script>
+                function onInit()
+                    setColor("FF61FFF9");
+                end
+            </script>
+            <invisible />
+        </string_static>
+    </template>
+    <template name="string_clientct_tech_armor_status">
+        <string_static name="tech_armor_status">
+            <anchored to="rightanchor" width="30" height="20">
+                <top />
+                <right anchor="left" relation="relative" offset="-10" />
+            </anchored>
+            <center />
+            <script>
+                function onInit()
+                    setColor("FFECFF8D");
+                end
+            </script>
+            <invisible />
+        </string_static>
+    </template>
+    <template name="string_clientct_barrier_status">
+        <string_static name="barrier_status">
+            <anchored to="rightanchor" width="30" height="20">
+                <top />
+                <right anchor="left" relation="relative" offset="-10" />
+            </anchored>
+            <center />
+            <script>
+                function onInit()
+                    setColor("FFCAB9FF");
+                end
+            </script>
+            <invisible />
+        </string_static>
+    </template>
+<!--    <template name="number_clientct_wounds">-->
+<!--        <number_clientct_shields name="shields" insertbefore="initresult" />-->
+<!--        <number_clientct_tech_armor name="tech_armor_hp" insertbefore="initresult" />-->
+<!--        <number_clientct_barrier name="barrier" insertbefore="initresult" />-->
+<!--        <number_ct_static name="wounds">-->
+<!--            <anchored to="barrier" width="30" height="20" mergerule="resetandadd">-->
+<!--                <top />-->
+<!--                <right anchor="left" offset="-10" />-->
+<!--            </anchored>-->
+<!--        </number_ct_static>-->
+<!--    </template>-->
+</root>

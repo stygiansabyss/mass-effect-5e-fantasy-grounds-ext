@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<!--
+  Please see the license.html file included with this distribution for
+  attribution and copyright information.
+-->
+
+<root>
+    <windowclass name="ct_entry" merge="join">
+        <sheetdata>
+            <number_ct_crosslink name="shields" insertbefore="initresult">
+                <anchored to="rightanchor" width="30" height="20">
+                    <top />
+                    <right anchor="left" relation="relative" offset="-10" />
+                </anchored>
+                <tabtarget prev="tech_armor_hp" next="hptotal" />
+                <script>
+                    function onInit()
+                        if super and super.onInit then
+                            super.onInit();
+                        end
+                        setColor("FF61FFF9");
+                    end
+                </script>
+            </number_ct_crosslink>
+            <number_ct_crosslink name="tech_armor_hp" insertbefore="initresult">
+                <anchored to="rightanchor" width="30" height="20">
+                    <top />
+                    <right anchor="left" relation="relative" offset="-10" />
+                </anchored>
+                <tabtarget prev="barrier" next="shields" />
+                <script>
+                    function onInit()
+                        if super and super.onInit then
+                            super.onInit();
+                        end
+                        setColor("FFECFF8D");
+                    end
+                </script>
+            </number_ct_crosslink>
+            <number_ct_crosslink name="barrier" insertbefore="initresult">
+                <anchored to="rightanchor" width="30" height="20">
+                    <top />
+                    <right anchor="left" relation="relative" offset="-10" />
+                </anchored>
+                <tabtarget prev="initresult" next="tech_armor_hp" />
+                <script>
+                    function onInit()
+                        if super and super.onInit then
+                            super.onInit();
+                        end
+                        setColor("FFCAB9FF");
+                    end
+                </script>
+            </number_ct_crosslink>
+        </sheetdata>
+    </windowclass>
+</root>

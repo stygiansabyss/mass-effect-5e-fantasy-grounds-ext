@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
+<!--
+  This project is not endorsed by, directly affiliated with, maintained, authorized,
+  or sponsored by the ME5e project, Fantasy Grounds, Smiteworks,
+  or Wizards of the Coast. All product and company names are the registered trademarks of their original owners.
+  The use of any trade name or trademark is for identification and reference purposes only and
+  does not imply any association with the trademark holder of their product brand.
+-->
 <root version="3.0">
-
     <properties>
         <name>Feature: Mass Effect 5e</name>
         <version>~dev-version~</version>
-        <loadorder>99</loadorder>
         <description>
             <text>Conversion system for the Mass Effect universe using DnD 5e rules.</text>
             <website>https://www.n7.world</website>
@@ -16,12 +21,34 @@
     </properties>
 
     <announcement text="Mass Effect 5e\rMaintained by Stygian \r\nRules found at https://www.n7.world" font="emotefont" icon="me5e" />
+
     <base>
+        <!-- Icons -->
         <icon name="me5e" file="graphics/icons/me5e.png" />
+        <icon name="roll_barrier" file="graphics/icons/roll_barrier.png" />
+        <icon name="roll_defense" file="graphics/icons/roll_defense.png" />
+        <icon name="roll_shields" file="graphics/icons/roll_shields.png" />
+        <icon name="roll_tech_armor" file="graphics/icons/roll_tech_armor.png" />
 
-        <!-- <script name="EffectManagerADND" file="scripts/manager_effect_adnd.lua" />-->
+        <!-- Main data script -->
+        <script name="ME5eCommon" file="scripts/me5e-common.lua" />
+        <script name="ME5eCombat" file="scripts/me5e-combat.lua" />
 
+        <!-- Strings -->
         <includefile source="strings/strings.xml" />
-        <includefile source="campaign/record_char_notes.xml" /> -->
+
+        <!-- Custom Elements -->
+        <!-- TODO: Come back to this file if the idea of having defenses on the character sheet seems useful -->
+        <!-- <includefile source="campaign/record_char_main.xml" />-->
+        <includefile source="campaign/record_char_actions.xml" />
+        <includefile source="campaign/record_char_notes.xml" />
+        <!-- TODO: Finish adding new fields to weapons and armor -->
+        <!-- <includefile source="campaign/record_item.xml" />-->
+        <includefile source="campaign/template_power.xml" />
+        <includefile source="ct/ct_host.xml" />
+        <includefile source="ct/ct_host_entry.xml" />
+        <includefile source="ct/template_ct.xml" />
+        <includefile source="ct/ct_client.xml" />
+        <includefile source="ct/ct_client_entry.xml" />
     </base>
 </root>

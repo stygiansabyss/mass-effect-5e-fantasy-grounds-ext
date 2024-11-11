@@ -6,7 +6,53 @@
 -->
 
 <root>
+	<!-- Char Sheet: Main: Defenses -->
+	<string name="char_label_defenses">DEFENSES</string>
+	<string name="char_label_barrier">BAR</string>
+	<string name="char_label_tech_armor">Tech</string>
+	<string name="char_label_shields">SHLD</string>
+
 	<!-- Char Sheet: Notes: Reputation -->
 	<string name="char_label_paragon">Paragon</string>
 	<string name="char_label_renegade">Renegade</string>
+
+	<!-- Items -->
+	<string name="item_label_shield_max">Shields</string>
+	<string name="item_label_shield_regen">Shield Regen</string>
+	<!-- Currencies -->
+	<string name="currency_value_credits">Credits</string>
+	<string name="currency_value_omnigel">Omni-Gel</string>
+	<!-- Combat Tracker: Defenses -->
+	<string name="ct_label_shields">Shld</string>
+	<string name="ct_tooltip_shields">Armor (kinetic) shields</string>
+	<string name="ct_label_tech_armor">Tech</string>
+	<string name="ct_tooltip_tech_armor">Tech Armor</string>
+	<string name="ct_label_barrier">Bar</string>
+	<string name="ct_tooltip_barrier">Barrier</string>
+	<!-- Skill Names -->
+	<string name="skill_value_electronics">Electronics</string>
+	<string name="skill_value_engineering">Engineering</string>
+	<string name="skill_value_science">Science</string>
+	<string name="skill_value_vehiclehandling">Vehicle Handling</string>
+	<!-- Class Names -->
+	<string name="class_value_adept">Adept</string>
+	<string name="class_value_engineer">Engineer</string>
+	<string name="class_value_experiment">Experiment</string>
+	<string name="class_value_explorer">Explorer</string>
+	<string name="class_value_infiltrator">Infiltrator</string>
+	<string name="class_value_musician">Musician</string>
+	<string name="class_value_sentinel">Sentinel</string>
+	<string name="class_value_soldier">Soldier</string>
+	<string name="class_value_tracker">Tracker</string>
+	<string name="class_value_vanguard">Vanguard</string>
+	<string name="class_short_adept">Adp</string>
+	<string name="class_short_engineer">Eng</string>
+	<string name="class_short_experiment">Exp</string>
+	<string name="class_short_explorer">Exl</string>
+	<string name="class_short_infiltrator">Inf</string>
+	<string name="class_short_musician">Msc</string>
+	<string name="class_short_sentinel">Snt</string>
+	<string name="class_short_soldier">Sdr</string>
+	<string name="class_short_tracker">Trk</string>
+	<string name="class_short_vanguard">Vng</string>
 </root>

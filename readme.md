@@ -17,63 +17,60 @@ This extension only aims to make using fantasy grounds easier for anyone followi
 
 # What it does
 
+## Defenses
+
+Defenses have been added to the combat tracker (player and GM).  Currently only the GM can add values to these, but once 
+the values are there, it works automatically.  It will go through left to right (Barrier > Tech Armor > Shields).  Barrier 
+will automatically roll the d8 for you and subtract it from the damage.  Tech armor just subtracts.  Shields only work on 
+ranged attacks and take double damage from lightning.
+
+On the player side, it uses the overall game options.  If NPCs are set to status, they will just see a yes or nothing.
+
+> In future updates I plan to add more around this.  Effects to bypass or otherwise change this behavior are being figured
+> out.
+
+## Currencies/Creature Types/Classes/Skills
+
+The base DND 5E data has been modified to match ME5E.  Here are the changes.
+
+* Currency
+  * Removed default currencies and replaced them with Credits and Omni-Gel.
+* Creature Types
+  * Added the factions as creature types.  Until I change NPC data (allowing factions) this was the best I could find.
+  * This has the benefit of adding these factions to the death markers screen.
+* Changed Skills
+  * Removed: Animal Handling, Arcana, Nature, Religion
+  * Added: Electronics, Engineering, Science, Vehicle Handling
+  * These still exist in the Mod for Fantasy Grounds.  But using this extension will remove the need to mess with them.
+* Power Cast Fix
+  * Added the Mass effect classes to the cycler when 8 + Ability is chosen
+
 ## Reputation
 
-While there is a long list of what I want it to do, currently all it does is add Paragon/Renegade sections to the character sheet notes section.
+Part of this extension adds Paragon/Renegade sections to the character sheet notes tab.  It does nothing other than give
+players a place to store that information currently.
 
 ![image](https://github.com/user-attachments/assets/cfa834a0-f5f8-4698-a56f-f95b31bd1d46)
 
-# Wishlist
+# Being worked on
 
-Below are the things I would like to have this extension handle.
+## Armor
 
-- Skills/Currencies
-	- Add these in automatically
-	- Remove the unneeded skills
-- Defenses
-	- Armor Shields
-		- Max
-		- Regen
-		- Double damage on lightning
-		- Bypass on melee
-	- Tech Armor
-		- Temp HP
-	- Barrier
-		- 1d8 Reduction to damage when attacked
-		- Ticks/uses
-		- Check for barrier in spells that use it
-- Combos
-	- Primers and detonaters
-		- maybe add to spell create as a field
-	- If multiple primes, allow DM to determine order
-	- Auto handle effects as best as possible
-- Armor
-	- Allow for customizing each piece
-		- As in, all together armor or piece by piece armor
-	- Detail what piece has what bonus
-		- Head
-		- Chest
-			- Shields
-				- Max and regen
-			- 2 Medi-gel
-			- 6 Thermal clips
-		- Legs
-			- 2 Thermal clips
-			- 2 Grenade
-		- Arm
-			- 2 Thermal clips
-			- 2 Medi-gel
-	- Handle set bonuses
-	- Handle mod slots
-- Weapons
-	- Handle heat specifically
-		- Add heat field to weapons
-		- Use this in place of ammo on character sheet
-	- Handle mod slots
-- Mods
-	- Special item type for mods
-		- Show what item type and slot they go into
-	- Use to combine with weapon stats to give full stats
-- Reputation
-	- [x] track paragon/renegade
-	- Auto add feats at thresholds
+I am working to have armor better match mass effect.  This is a big area as I have a few hopes for it.
+
+- Shields/Shield Regen on body armor and chest pieces.
+- Mod section per piece.
+- Better inventory management of what pieces you can and can't have on.
+
+## Weapons
+
+- Low-hanging fruit, track heat and set that as max ammo automatically.
+
+## Spell Effect
+
+- Bypassing/changing defense behavior
+  - Warp ammo will make this painful.
+
+## Classes
+
+- I want to add proper spell slots for each of the classes.
