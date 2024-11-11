@@ -24,7 +24,19 @@ the values are there, it works automatically.  It will go through left to right 
 will automatically roll the d8 for you and subtract it from the damage.  Tech armor just subtracts.  Shields only work on 
 ranged attacks and take double damage from lightning.
 
+*GM View*<br />
+![gm_combat_tracker](https://github.com/user-attachments/assets/09b4f3ad-d8e4-4954-9bdc-682bdde16ff4)
+
+*Full Defenses*<br />
+![full_defense](https://github.com/user-attachments/assets/6a135a24-c93a-4f34-843f-ca8f710069af)
+
+*Handling Lightning*<br />
+![shields_blocking_lightning](https://github.com/user-attachments/assets/2edb249e-9119-422a-8c35-e742f5ecded4)
+
 On the player side, it uses the overall game options.  If NPCs are set to status, they will just see a yes or nothing.
+
+*Player View*<br />
+![player_combat_tracker](https://github.com/user-attachments/assets/84c89b4f-18ce-409f-937d-9e07b190aad6)
 
 > In future updates I plan to add more around this.  Effects to bypass or otherwise change this behavior are being figured
 > out.
