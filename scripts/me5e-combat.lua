@@ -6,6 +6,7 @@
 OOB_MSGTYPE_APPLYDMG = "applydmg";
 local originalMsgOOB;
 local originalApplyDamage;
+local originalMessageDamage;
 local aDamageRoll;
 local aSource;
 local aTarget;
@@ -17,21 +18,23 @@ local aCTNode;
 
 function onInit()
     ActionsManager.registerResultHandler("barrier_d8", handleBarrier);
+
     OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_APPLYDMG, handleApplyDamage);
 
     -- Store this for later.
     originalApplyDamage = ActionDamage.applyDamage;
+    originalMessageDamage = ActionDamage.messageDamage;
 end
 
 function handleApplyDamage(msgOOB)
 
     originalMsgOOB = msgOOB;
 
-    ActionDamage.applyDamage = applyDamage;
+    ActionDamage.messageDamage = messageDamage;
     ActionDamage.handleApplyDamage(msgOOB);
 end
 
-function applyDamage(rSource, rTarget, rRoll)
+function messageDamage(rSource, rTarget, rRoll)
     if rRoll.sType ~= "damage" then
         sendBackTo5e();
         return ;
@@ -65,6 +68,7 @@ function applyDamage(rSource, rTarget, rRoll)
         return ;
     end
 
+    -- TODO: Get bypass working
     -- Barrier has to be handled uniquely since it requires a roll.
     --local bBypassBarrier = hasEffect("BYPBARRIER");
     --
@@ -72,6 +76,7 @@ function applyDamage(rSource, rTarget, rRoll)
     --    sendBypassMessage("Barrier");
     --    removeEffect("BYPBARRIER");
     --end
+    sendStartingDamageMessage();
 
     if nBarrier > 0 then
         rollBarrier(rTarget);
@@ -94,7 +99,7 @@ function checkShields(rSource, rTarget)
     end
 
     -- Shields do not work on melee damage.
-    if nShields > 0 and aDamageRoll.nTotal > 0 and aDamageRoll.range == "R" then
+    if nShields > 0 and aDamageRoll.nTotal > 0 and aDamageRoll.range ~= "M" then
         handleShields(aDamageRoll, rSource, rTarget);
     end
 
@@ -109,15 +114,15 @@ function checkShields(rSource, rTarget)
 
     if originalMsgOOB.nTotal ~= remainingDamage then
         sendRemainingDamageMessage();
-        fixOriginalMsg(remainingDamage);
+        --fixOriginalMsg(remainingDamage);
     end
 
     sendBackTo5e();
 end
 
 function sendBackTo5e()
-    ActionDamage.applyDamage = originalApplyDamage;
-    ActionDamage.handleApplyDamage(originalMsgOOB);
+    ActionDamage.messageDamage = originalMessageDamage;
+    ActionDamage.messageDamage(aSource, aTarget, aDamageRoll);
 
     aCTNode = nil;
     originalMsgOOB = nil;
@@ -287,24 +292,19 @@ function handleShields(rRoll, rSource, rTarget)
 end
 
 function sendBypassMessage(sType)
-    local msgShort = { font = "msgfont" };
-    local msgLong = { font = "msgfont" };
+    local msg = { font = "msgfont" };
 
     if sType == "Barrier" then
-        msgShort.icon = "roll_barrier";
-        msgLong.icon = "roll_barrier";
+        msg.icon = "roll_barrier";
     elseif sType == "Tech Armor" then
-        msgShort.icon = "roll_tech_armor";
-        msgLong.icon = "roll_tech_armor";
+        msg.icon = "roll_tech_armor";
     else
-        msgShort.icon = "roll_shields";
-        msgLong.icon = "roll_shields";
+        msg.icon = "roll_shields";
     end
 
-    msgShort.text = string.format("[Defense] %s BYPASSED", sType);
-    msgLong.text = string.format("[Defense] %s BYPASSED", sType);
+    msg.text = string.format("[Defense] %s BYPASSED", sType);
 
-    ActionsManager.outputResult(aDamageRoll.bSecret, aSource, aTarget, msgLong, msgShort);
+    ActionsManager.outputResult(aDamageRoll.bSecret, aSource, aTarget, msg, msg);
 end
 
 function sendBarrierMessage(rDamage, rDefenseHP, rTarget, rRoll)
@@ -324,46 +324,56 @@ function sendBarrierMessage(rDamage, rDefenseHP, rTarget, rRoll)
 end
 
 function sendTechArmorMessage(nBlocked, rSource, rTarget, rRoll)
-    local msgShort = { font = "msgfont", icon = "roll_tech_armor" };
-    local msgLong = { font = "msgfont", icon = "roll_tech_armor" };
+    local msg = { font = "msgfont", icon = "roll_tech_armor" };
 
-    msgShort.text = string.format("[Defense] %s [%s] -> [from %s]", "Tech Armor", nBlocked, rTarget.sName);
-    msgLong.text = string.format("[Defense] %s [%s] -> [from %s]", "Tech Armor", nBlocked, rTarget.sName);
+    msg.text = string.format("[Defense] %s [%s] -> [from %s]", "Tech Armor", nBlocked, rTarget.sName);
 
-    ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msgLong, msgShort);
+    ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
 end
 
 function sendShieldMessage(nBlocked, rSource, rTarget, nLightningBlocked)
-    local msgShort = { font = "msgfont", icon = "roll_shields" };
-    local msgLong = { font = "msgfont", icon = "roll_shields" };
+    local msg = { font = "msgfont", icon = "roll_shields" };
 
-    msgShort.text = string.format("[Defense] %s [%s] -> [from %s]", "Kinetic Shields", nBlocked, rTarget.sName);
-    msgLong.text = string.format("[Defense] %s [%s] -> [from %s]", "Kinetic Shields", nBlocked, rTarget.sName);
+    msg.text = string.format("[Defense] %s [%s] -> [from %s]", "Kinetic Shields", nBlocked, rTarget.sName);
 
     if nLightningBlocked > 0 then
-        msgShort.text = string.format("%s [Lightning Damage: %s]", msgShort.text, nLightningBlocked);
-        msgLong.text = string.format("%s [Lightning Damage: %s]", msgLong.text, nLightningBlocked);
+        msg.text = string.format("%s [Lightning Damage: %s]", msgShort.text, nLightningBlocked);
     end
 
-    ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msgLong, msgShort);
+    ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
+end
+
+function sendStartingDamageMessage()
+    local msg = { font = "msgfont" };
+    local isHalf = aDamageRoll.sResults:match("%[HALF%]");
+    local sHalf = " ";
+
+    if isHalf then
+        sHalf = '[HALF] ';
+    end
+
+    msg.text = string.format("Defending against %sdamage: %s", sHalf, aDamageRoll.nTotal);
+
+    ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
 end
 
 function sendRemainingDamageMessage()
-    local msgShort = { font = "msgfont" };
-    local msgLong = { font = "msgfont" };
+    local msg = { font = "msgfont" };
 
-    msgShort.text = string.format("Remaining damage: %s", aDamageRoll.nTotal);
-    msgLong.text = string.format("Remaining damage: %s", aDamageRoll.nTotal);
+    msg.text = string.format("Remaining damage: %s", aDamageRoll.nTotal);
 
-    ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msgLong, msgShort);
+    ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
 end
 
 function sendNoDamageMessage()
-    local msgShort = { font = "msgfont", icon = "roll_damage" };
-    local msgLong = { font = "msgfont", icon = "roll_damage" };
+    local msg = { font = "msgfont", icon = "roll_damage" };
+    local sRange = "";
 
-    msgShort.text = string.format("[Damage (%s)] %s [0] -> [to %s][ABSORBED]", aDamageRoll.sRange, aDamageRoll.sLabel, aTarget.sName);
-    msgLong.text = string.format("[Damage (%s)] %s [0] -> [to %s][ABSORBED]", aDamageRoll.sRange, aDamageRoll.sLabel, aTarget.sName);
+    if aDamageRoll.sRange then
+        sRange = " (" .. aDamageRoll.sRange .. ")";
+    end
 
-    ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msgLong, msgShort);
+    msg.text = string.format("[Damage%s] %s [0] -> [to %s][ABSORBED]", sRange, aDamageRoll.sLabel, aTarget.sName);
+
+    ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
 end
