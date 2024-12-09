@@ -17,8 +17,12 @@
 	<string name="char_label_renegade">Renegade</string>
 
 	<!-- Items -->
+	<string name="item_label_heat">Heat</string>
 	<string name="item_label_shield_max">Shields</string>
 	<string name="item_label_shield_regen">Shield Regen</string>
+	<string name="item_label_thermal_clip_cap">Thermal Cap</string>
+	<string name="item_label_grenade_cap">Grenade Cap</string>
+	<string name="item_label_medi_gel_cap">Medi-Gel Cap</string>
 	<!-- Currencies -->
 	<string name="currency_value_credits">Credits</string>
 	<string name="currency_value_omnigel">Omni-Gel</string>

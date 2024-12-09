@@ -1,3 +1,8 @@
+# DEC 9 2024
+
+- Fixed a bug with health dice
+  - The global for the roll wasn't being set when a roll wasnt a damage roll.  Moved setting the variables higher and it now shows correctly.
+
 # NOV 10 2024
 
 - Added currencies

@@ -35,7 +35,13 @@ function handleApplyDamage(msgOOB)
 end
 
 function messageDamage(rSource, rTarget, rRoll)
-    if rRoll.sType ~= "damage" then
+    -- Set the global roll to the damage roll.
+    aDamageRoll = rRoll;
+    aSource = rSource;
+    aTarget = rTarget;
+    
+    Debug.console(rRoll);
+    if rRoll.sType == nil or rRoll.sType ~= "damage" then
         sendBackTo5e();
         return ;
     end
@@ -45,11 +51,6 @@ function messageDamage(rSource, rTarget, rRoll)
         sendBackTo5e();
         return ;
     end
-
-    -- Set the global roll to the damage roll.
-    aDamageRoll = rRoll;
-    aSource = rSource;
-    aTarget = rTarget;
 
     if sTargetNodeType == "pc" then
         aCTNode = ActorManager.getCTNode(rTarget);
@@ -337,7 +338,7 @@ function sendShieldMessage(nBlocked, rSource, rTarget, nLightningBlocked)
     msg.text = string.format("[Defense] %s [%s] -> [from %s]", "Kinetic Shields", nBlocked, rTarget.sName);
 
     if nLightningBlocked > 0 then
-        msg.text = string.format("%s [Lightning Damage: %s]", msgShort.text, nLightningBlocked);
+        msg.text = string.format("%s [Lightning Damage: %s]", msg.text, nLightningBlocked);
     end
 
     ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);

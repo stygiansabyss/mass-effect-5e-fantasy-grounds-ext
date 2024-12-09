@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<root>
+    <windowclass name="char_weapon" merge="join">
+        <sheetdata>
+            <basicnumber name="maxammo">
+                <script>
+                    function onInit()
+                        super.onInit();
+                        local nodeRecord = getDatabaseNode();
+                        local parent = DB.getParent(nodeRecord);
+                        local heat = DB.getValue(parent, "heat");
+                        Debug.console(nodeRecord);
+                        Debug.console(parent);
+                        Debug.console(heat);
+                        nodeRecord.setValue(heat);
+                    end
+                </script>
+            </basicnumber>
+        </sheetdata>
+    </windowclass>
+</root>

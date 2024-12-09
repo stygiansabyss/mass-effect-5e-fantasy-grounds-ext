@@ -1,10 +1,32 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
 
 <root>
+    <windowclass name="item_main_weapon" merge="join">
+        <script>
+            function update(bReadOnly, bID)
+                local tFields = { "bonus", "damage", "heat", "properties", };
+                WindowManager.callSafeControlsUpdate(self, tFields, bReadOnly, not bID);
+
+                local bIs2024 = (DB.getValue(getDatabaseNode(), "version", "") == "2024");
+                WindowManager.callSafeControlUpdate(self, "mastery", bReadOnly, not bID or not bIs2024);
+
+                parentcontrol.setVisible(WindowManager.getAnyControlVisible(self, tFields));
+            end
+        </script>
+        <sheetdata>
+
+            <label_content_column name="heat_label">
+                <static textres="item_label_heat" />
+            </label_content_column>
+            <number_content_columnh name="heat">
+                <delaykeyupdate />
+            </number_content_columnh>
+        </sheetdata>
+    </windowclass>
     <windowclass name="item_main_armor" merge="join">
         <script>
             function update(bReadOnly, bID)
-                local tFields = { "bonus", "ac", "shield_max", "shield_regen", "dexbonus", "strength", "stealth", };
+                local tFields = { "bonus", "ac", "shield_max", "shield_regen", "thermal_clip_cap", "grenade_cap", "medi_gel_cap", "dexbonus", "strength", "stealth", };
                 WindowManager.callSafeControlsUpdate(self, tFields, bReadOnly, not bID);
 
                 local bIs2024 = (DB.getValue(getDatabaseNode(), "version", "") == "2024");
@@ -25,6 +47,27 @@
                 <static textres="item_label_shield_regen"/>
             </label_content_column>
             <number_content_column name="shield_regen">
+                <delaykeyupdate/>
+            </number_content_column>
+
+            <label_content_column name="thermal_clip_label">
+                <static textres="item_label_thermal_clip_cap"/>
+            </label_content_column>
+            <number_content_column name="thermal_clip_cap">
+                <delaykeyupdate/>
+            </number_content_column>
+
+            <label_content_column name="grenade_label">
+                <static textres="item_label_grenade_cap"/>
+            </label_content_column>
+            <number_content_column name="grenade_cap">
+                <delaykeyupdate/>
+            </number_content_column>
+
+            <label_content_column name="medi_gel_label">
+                <static textres="item_label_medi_gel_cap"/>
+            </label_content_column>
+            <number_content_column name="medi_gel_cap">
                 <delaykeyupdate/>
             </number_content_column>
         </sheetdata>
