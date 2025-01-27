@@ -1,7 +1,18 @@
+# Jan 19 2025
+
+* Added Sub Type as a filter for items
+* Added language as a filter for NPCs.
+* Fixed error with defenses after a 5E update.
+
 # DEC 9 2024
 
 - Fixed a bug with health dice
   - The global for the roll wasn't being set when a roll wasnt a damage roll.  Moved setting the variables higher and it now shows correctly.
+
+# Nov 24 2024
+
+* Fixed a bug with half on save. Changed defenses to plug into messageDamage instead of applyDamage.
+* Fixed the issue with messaging about damage when no range was specified on the roll.
 
 # NOV 10 2024
 

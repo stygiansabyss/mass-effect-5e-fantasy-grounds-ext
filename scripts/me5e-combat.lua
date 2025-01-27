@@ -29,9 +29,22 @@ end
 function handleApplyDamage(msgOOB)
 
     originalMsgOOB = msgOOB;
+    originalMsgOOB.nTotal = tonumber(originalMsgOOB.nTotal);
+    Debug.console("Message");
+    Debug.console(msgOOB);
 
-    ActionDamage.messageDamage = messageDamage;
-    ActionDamage.handleApplyDamage(msgOOB);
+    local rSource = ActorManager.resolveActor(msgOOB.sSourceNode);
+    local rTarget = ActorManager.resolveActor(msgOOB.sTargetNode);
+    if rTarget then
+        rTarget.nOrder = msgOOB.nTargetOrder;
+    end
+
+    local rRoll = UtilityManager.decodeRollFromOOB(msgOOB);
+
+    messageDamage(rSource, rTarget, rRoll);
+
+    --ActionDamage.messageDamage = messageDamage;
+    --ActionDamage.handleApplyDamage(msgOOB);
 end
 
 function messageDamage(rSource, rTarget, rRoll)
@@ -39,8 +52,7 @@ function messageDamage(rSource, rTarget, rRoll)
     aDamageRoll = rRoll;
     aSource = rSource;
     aTarget = rTarget;
-    
-    Debug.console(rRoll);
+
     if rRoll.sType == nil or rRoll.sType ~= "damage" then
         sendBackTo5e();
         return ;
@@ -95,16 +107,16 @@ function removeEffect(sEffect)
 end
 
 function checkShields(rSource, rTarget)
-    if nTechArmor > 0 and aDamageRoll.nTotal > 0 then
+    if nTechArmor > 0 and originalMsgOOB.nTotal > 0 then
         handleTechArmor(aDamageRoll, rSource, rTarget);
     end
 
     -- Shields do not work on melee damage.
-    if nShields > 0 and aDamageRoll.nTotal > 0 and aDamageRoll.range ~= "M" then
+    if nShields > 0 and originalMsgOOB.nTotal > 0 and originalMsgOOB.range ~= "M" then
         handleShields(aDamageRoll, rSource, rTarget);
     end
 
-    if aDamageRoll.nTotal == 0 then
+    if originalMsgOOB.nTotal == 0 then
         Debug.console("All damage removed by defenses");
         sendNoDamageMessage();
 
@@ -122,8 +134,12 @@ function checkShields(rSource, rTarget)
 end
 
 function sendBackTo5e()
-    ActionDamage.messageDamage = originalMessageDamage;
-    ActionDamage.messageDamage(aSource, aTarget, aDamageRoll);
+    --ActionDamage.messageDamage = originalMessageDamage;
+    --ActionDamage.messageDamage(aSource, aTarget, aDamageRoll);
+    originalMsgOOB.nTotal = tostring(originalMsgOOB.nTotal);
+    Debug.console("Message");
+    Debug.console(originalMsgOOB);
+    ActionDamage.handleApplyDamage(originalMsgOOB);
 
     aCTNode = nil;
     originalMsgOOB = nil;
@@ -162,7 +178,7 @@ function rollBarrier(rTarget)
 end
 
 function handleBarrier(rSource, rTarget, rRoll)
-    local nDamage = aDamageRoll.nTotal;
+    local nDamage = originalMsgOOB.nTotal;
     local nBarrierHp = rRoll.nTotal;
     local nBarrierTicks = nBarrier - 1;
     local sBarrierStatus;
@@ -186,13 +202,13 @@ function handleBarrier(rSource, rTarget, rRoll)
     nBarrier = nBarrierTicks;
     DB.setValue(aCTNode, "barrier", "number", nBarrierTicks);
     DB.setValue(aCTNode, "barrier_status", "string", sBarrierStatus);
-    aDamageRoll.nTotal = remainingDamage;
+    originalMsgOOB.nTotal = remainingDamage;
 
     checkShields(aSource, rSource);
 end
 
 function handleTechArmor(rRoll, rSource, rTarget)
-    local nDamage = rRoll.nTotal;
+    local nDamage = originalMsgOOB.nTotal;
     local nTechHP = nTechArmor;
     local nBlocked;
     local sTechArmorStatus;
@@ -225,11 +241,11 @@ function handleTechArmor(rRoll, rSource, rTarget)
     nTechArmor = nTechHP;
     DB.setValue(aCTNode, "tech_armor_hp", "number", nTechHP);
     DB.setValue(aCTNode, "tech_armor_status", "string", sTechArmorStatus);
-    aDamageRoll.nTotal = remainingDamage;
+    originalMsgOOB.nTotal = remainingDamage;
 end
 
 function handleShields(rRoll, rSource, rTarget)
-    local nDamage = rRoll.nTotal;
+    local nDamage = originalMsgOOB.nTotal;
     local nShieldHP = nShields;
     local nBlocked = 0;
     local sShieldsStatus;
@@ -255,21 +271,28 @@ function handleShields(rRoll, rSource, rTarget)
             end
             nShieldHP = nShieldHP - nRollDamage;
         elseif sDamageType == "lightning" and nShieldHP > 0 then
-            -- Lighting does double damage to shields
-            -- To handle this, we will half the remaining shields.
-            local nTempDamage = nRollDamage * 2;
-            if nTempDamage >= nShieldHP then
+            -- Lightning does double damage to shields, so we drop them by half.
+            nShieldHP = nShieldHP / 2;
+            nShieldHP = math.floor(nShieldHP+0.49999999999999994);
+
+            if nRollDamage >= nShieldHP then
                 remainingDamage = remainingDamage - nShieldHP;
-                nBlocked = nBlocked + nShieldHP;
-                nLightningBlocked = nLightningBlocked + nShieldHP;
+                nBlocked = nBlocked + (nShieldHP * 2);
                 nDamageReduction = nDamageReduction + nShieldHP;
+                nLightningBlocked = nShieldHP;
             else
-                remainingDamage = remainingDamage - (nTempDamage / 2);
-                nBlocked = nBlocked + nTempDamage;
-                nLightningBlocked = nLightningBlocked + nTempDamage;
+                remainingDamage = remainingDamage - nRollDamage;
+                nBlocked = nBlocked + nRollDamage;
                 nDamageReduction = nDamageReduction + nRollDamage;
+                nLightningBlocked = nRollDamage;
             end
-            nShieldHP = nShieldHP - nTempDamage;
+            nShieldHP = nShieldHP - nRollDamage;
+
+            -- Set the shields back in case there are other damage types.
+            if nShieldHP > 0 then
+                nShieldHP = nShieldHP * 2;
+            end
+
         end
     end
 
@@ -289,7 +312,7 @@ function handleShields(rRoll, rSource, rTarget)
     nShields = nShieldHP;
     DB.setValue(aCTNode, "shields", "number", nShieldHP);
     DB.setValue(aCTNode, "shields_status", "string", sShieldsStatus);
-    aDamageRoll.nTotal = remainingDamage;
+    originalMsgOOB.nTotal = remainingDamage;
 end
 
 function sendBypassMessage(sType)
@@ -346,8 +369,12 @@ end
 
 function sendStartingDamageMessage()
     local msg = { font = "msgfont" };
-    local isHalf = aDamageRoll.sResults:match("%[HALF%]");
+    local isHalf = false;
     local sHalf = " ";
+
+    if aDamageRoll.sResults then
+        isHalf = aDamageRoll.sResults:match("%[HALF%]");
+    end
 
     if isHalf then
         sHalf = '[HALF] ';
@@ -361,7 +388,7 @@ end
 function sendRemainingDamageMessage()
     local msg = { font = "msgfont" };
 
-    msg.text = string.format("Remaining damage: %s", aDamageRoll.nTotal);
+    msg.text = string.format("Remaining damage: %s", originalMsgOOB.nTotal);
 
     ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
 end

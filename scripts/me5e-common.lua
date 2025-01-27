@@ -28,6 +28,7 @@ function onInit()
         "n7",
         "rachni",
         "reaper",
+        "red army",
         "thorian",
     };
 
@@ -45,7 +46,7 @@ function onInit()
         "lifted",
         "paralyzed",
         "poisoned",
-        "primed",
+        "primed: radiant",
         "prone",
         "restrained",
         "stable",
@@ -60,13 +61,13 @@ function onInit()
         ["deafened"] = "cond_deafened",
         ["encumbered"] = "cond_encumbered",
         ["frightened"] = "cond_frightened",
-        ["frozen"] = "cond_frozen",
+        ["frozen"] = "cond_slowed",
         ["grappled"] = "cond_grappled",
         ["incapacitated"] = "cond_paralyzed",
         ["invisible"] = "cond_invisible",
         ["lifted"] = "cond_lifted",
         ["paralyzed"] = "cond_paralyzed",
-        ["primed"] = "cond_primed",
+        ["pradiant"] = "cond_dazed",
         ["prone"] = "cond_prone",
         ["restrained"] = "cond_restrained",
         ["stunned"] = "cond_stunned",
@@ -184,12 +185,24 @@ function onInit()
         { name = Interface.getString("currency_value_omnigel"), weight = 0.01, value = 1 },
     };
 
+    -- Item Filters
+    itemFilters = LibraryData5E.aRecordOverrides;
+    itemFilters["item"]["aCustomFilters"]["Sub Type"] = { sField = "subtype" };
+    itemFilters["npc"]["aCustomFilters"]["Language"] = { sField = "languages" };
+
+    -- Conditions
+    conditions = DataCommon.conditions;
+    table.insert(conditions, "frozen");
+    table.insert(conditions, "lifted");
+    table.insert(conditions, "indoctrinated");
+    table.insert(conditions, "targeting");
+
     -- "Push" data changes in this file to the packages - overwriting the original base data.
     DataCommon.skilldata = skilldata;
     DataCommon.psskilldata = psskilldata;
     DataCommon.creaturetype = creaturetype;
     DataCommon.creaturesubtype = creaturesubtype;
-    DataCommon.conditions = conditions;
+    --DataCommon.conditions = conditions;
     DataCommon.condcomps = condcomps;
     DataCommon.classes = classes;
     DataCommon.class_nametovalue = class_nametovalue;
