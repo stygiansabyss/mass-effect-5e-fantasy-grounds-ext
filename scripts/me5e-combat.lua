@@ -92,7 +92,7 @@ function messageDamage(rSource, rTarget, rRoll)
     sendStartingDamageMessage();
 
     if nBarrier > 0 then
-        rollBarrier(rTarget);
+        showBarrierChoiceDialog(rTarget);
     else
         checkShields(rSource, rTarget);
     end
@@ -172,15 +172,196 @@ function fixOriginalMsg(remainingDamage)
     originalMsgOOB.nTotal = remainingDamage;
 end
 
-function rollBarrier(rTarget)
-    local rRoll = { sType = "barrier_d8", sDesc = "Barrier Defense", aDice = { "d8" }, nMod = 0 };
-    ActionsManager.performAction(nil, rTarget, rRoll);
+function showBarrierChoiceDialog(rTarget)    
+    -- Get character info to determine if they can choose ticks
+    local sTargetNodeType, nodeTarget = ActorManager.getTypeAndNode(rTarget);
+    
+
+    local vanguardNode = getVanguardNode(nodeTarget);
+    local nDicePerTick = getBarrierDicePerTick(vanguardNode);
+    local bCanChooseTicks = canChooseBarrierTicks(vanguardNode);
+    
+    local nTicksToSpend;
+    
+    if bCanChooseTicks then
+        -- Level 3+ Vanguards get to choose
+        showBarrierInputDialog(rTarget, nBarrier, nDicePerTick);
+    else
+        -- Everyone else automatically uses 1 tick
+        Debug.console("Non-Vanguard or level < 3, automatically using 1 barrier tick");
+        ChatManager.SystemMessage("Barrier Defense: Using 1 barrier tick (" .. (nDicePerTick == 2 and "2d8" or "1d8") .. ")");
+        rollBarrier(rTarget, 1, nDicePerTick);
+    end
 end
 
-function handleBarrier(rSource, rTarget, rRoll)
+function showBarrierInputDialog(rTarget, nBarrier, nDicePerTick)
+    Debug.console("Showing barrier input dialog");
+    
+    -- Create selection dialog using DialogManager
+    local sMessage = string.format("How many barrier ticks do you want to spend?\n\nYou have %d barrier ticks available.\nEach tick provides %s damage reduction.", 
+                                   nBarrier, 
+                                   nDicePerTick == 2 and "2d8" or "1d8");
+    
+    local tOptions = {};
+    -- Add options for each barrier amount from 0 to nBarrier
+    for i = 0, nBarrier do
+        if i == 0 then
+            table.insert(tOptions, { text = "No Barrier (0 ticks)", value = i });
+        elseif i == 1 then
+            table.insert(tOptions, { text = "1 Tick", value = i });
+        else
+            table.insert(tOptions, { text = i .. " Ticks", value = i });
+        end
+    end
+    
+    local tDialogData = {
+        title = "Barrier Defense",
+        msg = sMessage,
+        options = tOptions,
+        callback = function(selection, data)
+            handleBarrierSelection(selection, data, rTarget, nBarrier, nDicePerTick);
+        end,
+        showmodule = false,
+    };
+    
+    DialogManager.requestSelectionDialog(tDialogData);
+end
+
+function handleBarrierSelection(selection, data, rTarget, nBarrier, nDicePerTick)
+	local value = selection[1];
+    
+    -- Parse the selected text to get the number of ticks
+    local nTicksSpent = 0;
+    
+    if value == "No Barrier (0 ticks)" then
+        nTicksSpent = 0;
+    elseif value == "1 Tick" then
+        nTicksSpent = 1;
+    else
+        -- Extract number from "X Ticks" format
+        local nTicks = tonumber(string.match(value, "(%d+) Ticks"));
+        if nTicks then
+            nTicksSpent = nTicks;
+        end
+    end
+    
+    if nTicksSpent == 0 then
+        -- No barrier
+        Debug.console("No barrier spent");
+        ChatManager.SystemMessage("Barrier Defense: No barrier spent");
+        checkShields(aSource, rTarget);
+    else
+        -- Use selected amount
+        Debug.console("Using " .. nTicksSpent .. " barrier ticks");
+        rollBarrier(rTarget, nTicksSpent, nDicePerTick);
+    end
+end
+
+
+function canChooseBarrierTicks(vanguardNode)
+    if vanguardNode == nil then
+        return false;
+    end
+
+    -- Check if this is a Vanguard at level 3+
+    local nLevel = DB.getValue(vanguardNode, "level", 0);
+    
+    -- Only level 3+ Vanguards can choose barrier ticks
+    return nLevel >= 3;
+end
+
+function getBarrierDicePerTick(vanguardNode)
+    if vanguardNode == nil then
+        return 1;
+    end
+
+    -- Check if this is a Vanguard at level 11+
+    local nLevel = DB.getValue(vanguardNode, "level", 0);
+    
+    -- Vanguards get 2d8 per tick at level 11+
+    if nLevel >= 11 then
+        return 2;
+    end
+    
+    -- Everyone else gets 1d8 per tick
+    return 1;
+end
+
+function getVanguardNode(nodeTarget)
+    -- Try to get from the character sheet classes section (array of classes)
+    local sNodePath = DB.getPath(nodeTarget);
+    local nodeClasses = DB.findNode(sNodePath .. ".classes");
+    
+    if nodeClasses then
+        -- Check all classes to find if any are Vanguard (or other ME5e classes)
+        local nClassCount = DB.getChildCount(nodeClasses);
+        local sFirstClass = nil;
+        Debug.console("Found " .. nClassCount .. " classes");
+        
+        for i = 1, nClassCount do
+            local nodeClass = DB.getChild(nodeClasses, "id-0000" .. i);
+            if nodeClass then
+                local sClass = DB.getValue(nodeClass, "name", "");
+                Debug.console("Class " .. i .. " name: '" .. sClass .. "'");
+                
+                -- Check if this is a ME5e class (prioritize Vanguard for barrier mechanics)
+                if sClass == "Vanguard" then
+                    Debug.console("Found Vanguard class!");
+                    return nodeClass;
+                elseif sClass ~= "" then
+                    -- Store the first non-empty class as fallback
+                    if not sFirstClass then
+                        sFirstClass = nodeClass;
+                    end
+                end
+            end
+        end
+        
+        -- If we found a class but no Vanguard, return the first class
+        if sFirstClass then
+            Debug.console("Character class found: '" .. sFirstClass .. "' (no Vanguard)");
+            return sFirstClass;
+        end
+    end
+    
+    Debug.console("No Vanguard class found");
+    return nil;
+end
+
+function rollBarrier(rTarget, nTicksSpent, nDicePerTick)
+    Debug.console("Rolling barrier - Ticks: " .. nTicksSpent .. ", Dice per tick: " .. nDicePerTick);
+    
+    if nTicksSpent <= 0 then
+        Debug.console("No ticks spent, skipping barrier");
+        checkShields(aSource, rTarget);
+        return;
+    end
+    
+    -- Calculate total dice to roll
+    local nTotalDice = nTicksSpent * nDicePerTick;
+    local sDiceNotation = nTotalDice .. "d8";
+    
+    -- Create the roll
+    local rRoll = { 
+        sType = "barrier_d8", 
+        sDesc = "Barrier Defense (" .. nTicksSpent .. " ticks)", 
+        aDice = { expr = sDiceNotation }, 
+        nMod = 0,
+        nTicksSpent = nTicksSpent,
+        nDicePerTick = nDicePerTick
+    };
+    
+    ActionsManager.performAction(nil, aTarget, rRoll);
+end
+
+function handleBarrier(rSource, rTarget, rRoll, msg)
+    Debug.console(originalMsgOOB);
+    Debug.console(msg);
+    
     local nDamage = originalMsgOOB.nTotal;
     local nBarrierHp = rRoll.nTotal;
-    local nBarrierTicks = nBarrier - 1;
+    local nTicksSpent = rRoll.nTicksSpent or 1; -- Fallback for old rolls
+    local nBarrierTicks = nBarrier - nTicksSpent;
     local sBarrierStatus;
 
     if nBarrierTicks > 0 then
@@ -188,8 +369,7 @@ function handleBarrier(rSource, rTarget, rRoll)
     end
 
     remainingDamage = nDamage - nBarrierHp;
-    nBarrierHp = nBarrierHp - nDamage;
-
+    
     -- Track the amount reduced
     nDamageReduction = nDamageReduction + rRoll.nTotal;
 
@@ -197,14 +377,14 @@ function handleBarrier(rSource, rTarget, rRoll)
         remainingDamage = 0;
     end
 
-    sendBarrierMessage(nDamage, rRoll.nTotal, rSource, rRoll);
+    sendBarrierMessage(nDamage, rRoll.nTotal, rSource, rRoll, nTicksSpent);
 
     nBarrier = nBarrierTicks;
     DB.setValue(aCTNode, "barrier", "number", nBarrierTicks);
     DB.setValue(aCTNode, "barrier_status", "string", sBarrierStatus);
     originalMsgOOB.nTotal = remainingDamage;
 
-    checkShields(aSource, rSource);
+    checkShields(aSource, rTarget);
 end
 
 function handleTechArmor(rRoll, rSource, rTarget)
@@ -331,7 +511,7 @@ function sendBypassMessage(sType)
     ActionsManager.outputResult(aDamageRoll.bSecret, aSource, aTarget, msg, msg);
 end
 
-function sendBarrierMessage(rDamage, rDefenseHP, rTarget, rRoll)
+function sendBarrierMessage(rDamage, rDefenseHP, rTarget, rRoll, nTicksSpent)
     local nBlocked;
     local rMessage = ActionsManager.createActionMessage(rTarget, rRoll);
 
@@ -341,8 +521,13 @@ function sendBarrierMessage(rDamage, rDefenseHP, rTarget, rRoll)
         nBlocked = rDamage;
     end
 
+    -- Create dynamic dice notation based on ticks spent and dice per tick
+    local nDicePerTick = rRoll.nDicePerTick or 1;
+    local nTotalDice = (nTicksSpent or 1) * nDicePerTick;
+    local sDiceNotation = nTotalDice .. "d8";
+    
     rMessage.icon = "roll_barrier";
-    rMessage.text = string.format("[Defense] %s [1d8=%s]", "Biotic Barrier", nBlocked);
+    rMessage.text = string.format("[Defense] %s [%s=%s] (%d ticks)", "Biotic Barrier", sDiceNotation, nBlocked, nTicksSpent or 1);
 
     Comm.deliverChatMessage(rMessage);
 end

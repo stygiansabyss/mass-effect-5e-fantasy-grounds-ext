@@ -59,4 +59,6 @@
 	<string name="class_short_soldier">Sdr</string>
 	<string name="class_short_tracker">Trk</string>
 	<string name="class_short_vanguard">Vng</string>
+	<!-- Barrier System -->
+	<string name="me5e_barrier_ticks_input">Enter number of barrier ticks to spend</string>
 </root>

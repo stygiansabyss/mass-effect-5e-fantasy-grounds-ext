@@ -33,6 +33,7 @@
         <!-- Main data script -->
         <script name="ME5eCommon" file="scripts/me5e-common.lua" />
         <script name="ME5eCombat" file="scripts/me5e-combat.lua" />
+        <script name="ME5ePartyManager" file="scripts/me5e-ps2.lua" />
         <script name="ME5eCharacterClass" file="scripts/me5e-char-class.lua" />
 
         <!-- Strings -->
@@ -41,7 +42,7 @@
         <!-- Custom Elements -->
         <!-- TODO: Come back to this file if the idea of having defenses on the character sheet seems useful -->
         <!-- <includefile source="campaign/record_char_main.xml" />-->
-        <includefile source="campaign/record_char_actions.xml" />
+<!--        <includefile source="campaign/record_char_actions.xml" />-->
         <includefile source="campaign/record_char_notes.xml" />
         <!-- TODO: Finish adding new fields to weapons and armor -->
 <!--        <includefile source="campaign/record_char_weapon.xml" />-->
