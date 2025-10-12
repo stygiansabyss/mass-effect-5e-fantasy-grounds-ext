@@ -180,12 +180,13 @@ function showBarrierChoiceDialog(rTarget)
     local vanguardNode = getVanguardNode(nodeTarget);
     local nDicePerTick = getBarrierDicePerTick(vanguardNode);
     local bCanChooseTicks = canChooseBarrierTicks(vanguardNode);
+    local nBarrierDie = getBarrierDie(vanguardNode);
     
     local nTicksToSpend;
     
     if bCanChooseTicks then
         -- Level 3+ Vanguards get to choose
-        showBarrierInputDialog(rTarget, nBarrier, nDicePerTick);
+        showBarrierInputDialog(rTarget, nBarrier, nDicePerTick, nBarrierDie);
     else
         -- Everyone else automatically uses 1 tick
         Debug.console("Non-Vanguard or level < 3, automatically using 1 barrier tick");
@@ -194,13 +195,13 @@ function showBarrierChoiceDialog(rTarget)
     end
 end
 
-function showBarrierInputDialog(rTarget, nBarrier, nDicePerTick)
+function showBarrierInputDialog(rTarget, nBarrier, nDicePerTick, nBarrierDie)
     Debug.console("Showing barrier input dialog");
     
     -- Create selection dialog using DialogManager
     local sMessage = string.format("How many barrier ticks do you want to spend?\n\nYou have %d barrier ticks available.\nEach tick provides %s damage reduction.", 
                                    nBarrier, 
-                                   nDicePerTick == 2 and "2d8" or "1d8");
+                                   nDicePerTick == 2 and "2d".. nBarrierDie or "1d" .. nBarrierDie);
     
     local tOptions = {};
     -- Add options for each barrier amount from 0 to nBarrier
@@ -219,7 +220,7 @@ function showBarrierInputDialog(rTarget, nBarrier, nDicePerTick)
         msg = sMessage,
         options = tOptions,
         callback = function(selection, data)
-            handleBarrierSelection(selection, data, rTarget, nBarrier, nDicePerTick);
+            handleBarrierSelection(selection, data, rTarget, nBarrier, nDicePerTick, nBarrierDie);
         end,
         showmodule = false,
     };
@@ -227,7 +228,7 @@ function showBarrierInputDialog(rTarget, nBarrier, nDicePerTick)
     DialogManager.requestSelectionDialog(tDialogData);
 end
 
-function handleBarrierSelection(selection, data, rTarget, nBarrier, nDicePerTick)
+function handleBarrierSelection(selection, data, rTarget, nBarrier, nDicePerTick, nBarrierDie)
 	local value = selection[1];
     
     -- Parse the selected text to get the number of ticks
@@ -253,7 +254,7 @@ function handleBarrierSelection(selection, data, rTarget, nBarrier, nDicePerTick
     else
         -- Use selected amount
         Debug.console("Using " .. nTicksSpent .. " barrier ticks");
-        rollBarrier(rTarget, nTicksSpent, nDicePerTick);
+        rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie);
     end
 end
 
@@ -287,6 +288,30 @@ function getBarrierDicePerTick(vanguardNode)
     return 1;
 end
 
+function getBarrierDie(vanguardNode)
+    if vanguardNode == nil then
+        return 8;
+    end
+
+    -- Check if this is a Vanguard at level 11+
+    local nLevel = DB.getValue(vanguardNode, "level", 0);
+    local nSubClass = DB.getValue(vanguardNode, "specialization", nil);
+
+    if nSubClass ~= "Battle Master" then
+        return 8;
+    end
+    
+    -- Vanguards get 2d8 per tick at level 11+
+    if nLevel >= 10 then
+        return 10;
+    elseif nLevel >= 18 then
+        return 12;
+    end
+    
+    -- Everyone else gets 1d8 per tick
+    return 1;
+end
+
 function getVanguardNode(nodeTarget)
     -- Try to get from the character sheet classes section (array of classes)
     local sNodePath = DB.getPath(nodeTarget);
@@ -298,21 +323,20 @@ function getVanguardNode(nodeTarget)
         local sFirstClass = nil;
         Debug.console("Found " .. nClassCount .. " classes");
         
-        for i = 1, nClassCount do
-            local nodeClass = DB.getChild(nodeClasses, "id-0000" .. i);
+        -- Get all child nodes and iterate through them (don't assume sequential IDs)
+        local aChildren = DB.getChildren(nodeClasses);
+        for _, nodeClass in pairs(aChildren) do
             if nodeClass then
                 local sClass = DB.getValue(nodeClass, "name", "");
-                Debug.console("Class " .. i .. " name: '" .. sClass .. "'");
+                Debug.console("Class name: '" .. sClass .. "'");
                 
                 -- Check if this is a ME5e class (prioritize Vanguard for barrier mechanics)
                 if sClass == "Vanguard" then
                     Debug.console("Found Vanguard class!");
                     return nodeClass;
-                elseif sClass ~= "" then
+                elseif sClass ~= "" and not sFirstClass then
                     -- Store the first non-empty class as fallback
-                    if not sFirstClass then
-                        sFirstClass = nodeClass;
-                    end
+                    sFirstClass = nodeClass;
                 end
             end
         end
@@ -328,7 +352,7 @@ function getVanguardNode(nodeTarget)
     return nil;
 end
 
-function rollBarrier(rTarget, nTicksSpent, nDicePerTick)
+function rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie)
     Debug.console("Rolling barrier - Ticks: " .. nTicksSpent .. ", Dice per tick: " .. nDicePerTick);
     
     if nTicksSpent <= 0 then
@@ -339,7 +363,7 @@ function rollBarrier(rTarget, nTicksSpent, nDicePerTick)
     
     -- Calculate total dice to roll
     local nTotalDice = nTicksSpent * nDicePerTick;
-    local sDiceNotation = nTotalDice .. "d8";
+    local sDiceNotation = nTotalDice .. "d" .. nBarrierDie;
     
     -- Create the roll
     local rRoll = { 
@@ -348,7 +372,8 @@ function rollBarrier(rTarget, nTicksSpent, nDicePerTick)
         aDice = { expr = sDiceNotation }, 
         nMod = 0,
         nTicksSpent = nTicksSpent,
-        nDicePerTick = nDicePerTick
+        nDicePerTick = nDicePerTick,
+        nBarrierDie = nBarrierDie
     };
     
     ActionsManager.performAction(nil, aTarget, rRoll);
@@ -523,11 +548,12 @@ function sendBarrierMessage(rDamage, rDefenseHP, rTarget, rRoll, nTicksSpent)
 
     -- Create dynamic dice notation based on ticks spent and dice per tick
     local nDicePerTick = rRoll.nDicePerTick or 1;
+    local nBarrierDie = rRoll.nBarrierDie or 8;
     local nTotalDice = (nTicksSpent or 1) * nDicePerTick;
-    local sDiceNotation = nTotalDice .. "d8";
+    local sDiceNotation = nTotalDice .. "d" .. nBarrierDie;
     
     rMessage.icon = "roll_barrier";
-    rMessage.text = string.format("[Defense] %s [%s=%s] (%d ticks)", "Biotic Barrier", sDiceNotation, nBlocked, nTicksSpent or 1);
+    rMessage.text = string.format("[Defense] %s [%s=%s] (%d ticks)", "Biotic Barrier", sDiceNotation, nBlocked, nTicksSpent or 1, nBarrierDie);
 
     Comm.deliverChatMessage(rMessage);
 end
