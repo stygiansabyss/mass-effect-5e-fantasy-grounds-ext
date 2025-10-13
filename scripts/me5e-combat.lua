@@ -312,6 +312,65 @@ function getBarrierDie(vanguardNode)
     return 1;
 end
 
+-- Functions for character sheet integration
+function activateBarrier(nodeChar, nBarrierTicks)
+    -- This function can be called from the character sheet
+    local nUses = DB.getValue(nodeChar, "barrier_uses", 0);
+    if nUses <= 0 then
+        return false;
+    end
+    
+    -- Reduce uses by 1
+    local nNewUses = nUses - 1;
+    DB.setValue(nodeChar, "barrier_uses", "number", nNewUses);
+    
+    -- Set current barrier ticks
+    DB.setValue(nodeChar, "barrier", "number", nBarrierTicks);
+    
+    ChatManager.SystemMessage("Barrier activated! Gained " .. nBarrierTicks .. " barrier ticks. Uses remaining: " .. nNewUses);
+    return true;
+end
+
+function activateTechArmor(nodeChar)
+    -- This function can be called from the character sheet
+    local nUses = tonumber(DB.getValue(nodeChar, "techarmor_uses", 0));
+    if nUses <= 0 then
+        ChatManager.SystemMessage("No tech armor uses remaining!");
+        return false;
+    end
+    
+    -- Reduce uses by 1
+    local nNewUses = nUses - 1;
+    DB.setValue(nodeChar, "techarmor_uses", "string", tostring(nNewUses));
+    
+    -- Calculate tech armor value: (Sentinel class level + INT modifier) * 2
+    local nSentinelLevel = getSentinelLevel(nodeChar);
+    local nIntMod = getAbilityModifier(nodeChar, "intelligence");
+    local nTechArmorValue = (nSentinelLevel + nIntMod) * 2;
+    
+    -- Set current tech armor
+    DB.setValue(nodeChar, "techarmor", "number", tonumber(nTechArmorValue));
+    
+    ChatManager.SystemMessage("Tech Armor activated! Gained " .. nTechArmorValue .. " tech armor. Uses remaining: " .. nNewUses);
+    return true;
+end
+
+function getSentinelLevel(nodeChar)
+    -- Get Sentinel class level from the character sheet
+    local nodeClasses = DB.findNode(DB.getPath(nodeChar) .. ".classes");
+    if nodeClasses then
+        local aChildren = DB.getChildren(nodeClasses);
+        for _, nodeClass in pairs(aChildren) do
+            local sClass = DB.getValue(nodeClass, "name", "");
+            if sClass == "Sentinel" then
+                return DB.getValue(nodeClass, "level", 0);
+            end
+        end
+    end
+    
+    return 0;
+end
+
 function getVanguardNode(nodeTarget)
     -- Try to get from the character sheet classes section (array of classes)
     local sNodePath = DB.getPath(nodeTarget);

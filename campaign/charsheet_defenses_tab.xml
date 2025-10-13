@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<root>
+    <!-- Add Defenses Tab to Character Sheet -->
+    <windowclass name="charsheet" merge="join">
+        <script>
+            function onInit()
+                local tTabs = WindowTabManager.getTabsFromWindow(self);
+                
+                WindowTabManager.registerTab('charsheet', {
+                    sName = 'defenses', 
+                    sTabRes = 'tab_defenses',
+                    sClass = 'charsheet_defenses', 
+                    sInsertBefore = 'actions'
+                })
+                
+                WindowTabManager.updateTabDisplay(self, tTabs);
+                
+                if super and super.onInit then
+                    super.onInit();
+                end
+            end
+        </script>
+    </windowclass>
+    
+    <!-- Define the tab container -->
+    <windowclass name="charsheet_defenses">
+        <sheetdata>
+            <anchor_content_top />
+            <anchor_content_bottom />
+            <sub_content_framed_groupbox name="content">
+                <class>charsheet_defenses_contents</class>
+            </sub_content_framed_groupbox>
+            <scrollbar_content />
+        </sheetdata>
+    </windowclass>
+
+    <!-- Defenses Tab Content -->
+    <windowclass name="charsheet_defenses_contents">
+        <!-- ME5e Defenses section - positioned above weapons -->
+        <margins control="0,0,0,2" />
+        <script file="scripts/charsheet_defenses_tab.lua" />
+        <sheetdata>
+            <anchor_content_top />
+            
+            <label_charframetop name="defenses_title">
+                <anchored to="contentanchor" height="20">
+                    <top relation="relative" offset="2" postoffset="2" />
+					<left offset="10" />
+					<right offset="-10" />
+                </anchored>
+                <static text="Mass Effect Defenses" />
+            </label_charframetop>
+            
+            <!-- Barrier Section -->
+            <label_charframetop name="barrier_title">
+                <anchored to="defenses_title" position="below" offset="0,10">
+                    <top relation="relative" offset="10" postoffset="10" />
+					<left offset="0" />
+					<right offset="0" />
+                </anchored>
+                <static text="Biotic Barrier" />
+            </label_charframetop>
+            
+            <label name="barrier_uses_label">
+                <anchored to="barrier_title" position="below" width="20" offset="0,10">
+                    <left offset="0" />
+                </anchored>
+                <static text="Barrier Uses:" />
+            </label>
+            <number_static name="barrier_uses">
+                <anchored to="barrier_uses_label" position="right" offset="10,0">
+                    <top />
+                </anchored>
+            </number_static>
+            
+            <label name="barrier_activate_test">
+                <anchored to="barrier_uses_label" position="below" offset="0,10" height="20" width="120">
+                    <left offset="0" />
+                </anchored>
+                <static text="[Activate Barrier]" />
+                <tooltip text="Click to activate barrier" />
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        window.activateBarrierFromXML();
+                    end
+                </script>
+            </label>
+            
+            <!-- Tech Armor Section -->
+            <label_charframetop name="techarmor_title">
+                <anchored to="barrier_activate_test" position="below" offset="0,20">
+                    <left offset="0" />
+                    <right offset="0" />
+                </anchored>
+                <static text="Tech Armor" />
+            </label_charframetop>
+            
+            <label name="techarmor_uses_label">
+                <anchored to="techarmor_title" position="below" offset="0,10">
+                    <left offset="10" />
+                </anchored>
+                <static textres="me5e_techarmor_uses" />
+            </label>
+            <number_content_column name="techarmor_uses">
+                <anchored to="techarmor_uses_label" position="right" offset="10,0">
+                    <top />
+                </anchored>
+            </number_content_column>
+            <button_stringcycler name="techarmor_activate">
+                <anchored to="techarmor_uses_label" position="below" offset="0,10">
+                    <left offset="10" />
+                </anchored>
+                <script>
+                    function onInit()
+                        ChatManager.SystemMessage("Button initialized!");
+                    end
+                    function onButtonPress()
+                        ChatManager.SystemMessage("TEST: Button press is working!");
+                    end
+                </script>
+                <parameters>
+                    <defaultlabelres>me5e_techarmor_activate</defaultlabelres>
+                    <labelsres>me5e_techarmor_activate</labelsres>
+                    <values>activate</values>
+                </parameters>
+            </button_stringcycler>
+        </sheetdata>
+    </windowclass>
+</root>
