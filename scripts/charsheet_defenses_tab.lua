@@ -527,6 +527,15 @@ activateBarrierFromXML = function()
         if bSuccess then
             ChatManager.SystemMessage("Barrier activated successfully!");
             updateDefenseInterface();
+            
+            -- Refresh combat tracker to show updated barrier value
+            local nodeCT = ActorManager.getCTNode(nodeChar);
+            if nodeCT then
+                -- Force refresh by updating the field again
+                local currentBarrier = DB.getValue(nodeChar, "barrier", 0);
+                DB.setValue(nodeCT, "barrier", "number", currentBarrier);
+                ChatManager.SystemMessage("Combat tracker refreshed!");
+            end
         else
             ChatManager.SystemMessage("Barrier activation failed!");
         end
