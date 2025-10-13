@@ -283,6 +283,7 @@ function checkBarrier(nodeChar)
     ChatManager.SystemMessage("checkBarrier called!");
     -- Update Barrier section
     local hasBarrier = hasFeature(nodeChar, "Barrier");
+    ChatManager.SystemMessage("Has Barrier feature: " .. tostring(hasBarrier));
     
     if hasBarrier then
         -- Show barrier elements
@@ -292,22 +293,29 @@ function checkBarrier(nodeChar)
         if self.barrier_uses_label then 
             self.barrier_uses_label.setVisible(true);
         end
-        if self.barrier_uses then 
-            self.barrier_uses.setVisible(true);
+        
+        -- Update barrier uses checkboxes
+        updateBarrierUsesCheckboxes(nodeChar);
+        
+        if self.barrier_activate_test then 
+            self.barrier_activate_test.setVisible(true);
             local nUses = getBarrierUses(nodeChar);
-            self.barrier_uses.setValue(nUses);
-        end
-        if self.barrier_activate then 
-            self.barrier_activate.setVisible(true);
-            local nUses = getBarrierUses(nodeChar);
-            self.barrier_activate.setEnabled(nUses > 0);
+            self.barrier_activate_test.setEnabled(nUses > 0);
         end
     else
+        ChatManager.SystemMessage("Character does not have Barrier feature - hiding all elements");
         -- Hide barrier elements
         if self.barrier_title then self.barrier_title.setVisible(false); end
         if self.barrier_uses_label then self.barrier_uses_label.setVisible(false); end
-        if self.barrier_uses then self.barrier_uses.setVisible(false); end
-        if self.barrier_activate then self.barrier_activate.setVisible(false); end
+        if self.barrier_activate_test then self.barrier_activate_test.setVisible(false); end
+        
+        -- Hide all barrier use checkboxes
+        for i = 1, 10 do
+            local checkbox = self["barrier_use_" .. i];
+            if checkbox then
+                checkbox.setVisible(false);
+            end
+        end
     end
 end
 
@@ -412,11 +420,13 @@ end
 function getBarrierUses(nodeChar)
     -- Calculate barrier uses from class and level - just take the highest from each class
     if not nodeChar then
+        ChatManager.SystemMessage("getBarrierUses: No character node");
         return 0;
     end
     
     local nodeClasses = DB.findNode(DB.getPath(nodeChar) .. ".classes");
     if not nodeClasses then
+        ChatManager.SystemMessage("getBarrierUses: No classes node found");
         return 0;
     end
     
@@ -427,16 +437,113 @@ function getBarrierUses(nodeChar)
         local className = DB.getValue(nodeClass, "name", "");
         local classLevel = DB.getValue(nodeClass, "level", 0);
         
+        ChatManager.SystemMessage("getBarrierUses: Found class " .. className .. " level " .. classLevel);
+        
         -- Get uses for this individual class
         if BARRIER_USES_BY_CLASS[className] and BARRIER_USES_BY_CLASS[className][classLevel] then
             local classUses = BARRIER_USES_BY_CLASS[className][classLevel];
+            ChatManager.SystemMessage("getBarrierUses: " .. className .. " level " .. classLevel .. " gives " .. classUses .. " uses");
             if classUses > maxUses then
                 maxUses = classUses;
             end
+        else
+            ChatManager.SystemMessage("getBarrierUses: No uses found for " .. className .. " level " .. classLevel);
         end
     end
     
+    ChatManager.SystemMessage("getBarrierUses: Returning maxUses=" .. maxUses);
     return maxUses;
+end
+
+function updateBarrierUsesCheckboxes(nodeChar)
+    -- Update the barrier uses checkboxes based on character's max uses and current uses
+    local maxUses = getBarrierUses(nodeChar);
+    local currentUses = DB.getValue(nodeChar, "barrier_uses", maxUses);
+    
+    ChatManager.SystemMessage("updateBarrierUsesCheckboxes: maxUses=" .. maxUses .. ", currentUses=" .. currentUses);
+    
+    -- Show/hide labels based on max uses
+    for i = 1, 10 do
+        local label = self["barrier_use_" .. i];
+        if label then
+            ChatManager.SystemMessage("Box " .. i .. ": maxUses=" .. maxUses .. ", i=" .. i .. ", i<=maxUses=" .. tostring(i <= maxUses));
+            if i <= maxUses then
+                label.setVisible(true);
+                -- Label shows ■ if this use has been spent (i > currentUses), □ if available
+                if i > currentUses then
+                    label.setValue("■");
+                else
+                    label.setValue("□");
+                end
+                ChatManager.SystemMessage("Box " .. i .. ": visible, value=" .. (i > currentUses and "■" or "□"));
+            else
+                label.setVisible(false);
+                ChatManager.SystemMessage("Box " .. i .. ": hidden");
+            end
+        else
+            ChatManager.SystemMessage("Box " .. i .. ": not found");
+        end
+    end
+end
+
+function updateBarrierUses()
+    -- Called when a button is clicked - update the barrier_uses field
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
+        return;
+    end
+    
+    local maxUses = getBarrierUses(nodeChar);
+    local spentUses = 0;
+    
+    -- Count pressed labels (spent uses)
+    for i = 1, maxUses do
+        local label = self["barrier_use_" .. i];
+        if label and label.getValue() == "■" then
+            spentUses = spentUses + 1;
+        end
+    end
+    
+    -- Update the barrier_uses field
+    local remainingUses = maxUses - spentUses;
+    DB.setValue(nodeChar, "barrier_uses", "number", remainingUses);
+    
+    -- Update button state
+    if self.barrier_activate_test then
+        self.barrier_activate_test.setEnabled(remainingUses > 0);
+    end
+end
+
+function toggleBarrierUse(nUseIndex)
+    -- Called when a specific barrier use box is clicked
+    ChatManager.SystemMessage("toggleBarrierUse called for box " .. nUseIndex);
+    
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
+        ChatManager.SystemMessage("No character node found");
+        return;
+    end
+    
+    local label = self["barrier_use_" .. nUseIndex];
+    if not label then
+        ChatManager.SystemMessage("Label " .. nUseIndex .. " not found");
+        return;
+    end
+    
+    local currentValue = label.getValue();
+    ChatManager.SystemMessage("Box " .. nUseIndex .. " current value: " .. currentValue);
+    
+    -- Toggle the box
+    if currentValue == "□" then
+        label.setValue("■");
+        ChatManager.SystemMessage("Box " .. nUseIndex .. " set to ■");
+    else
+        label.setValue("□");
+        ChatManager.SystemMessage("Box " .. nUseIndex .. " set to □");
+    end
+    
+    -- Update the barrier_uses field
+    updateBarrierUses();
 end
 
 function getTechArmorUsesForClass(nodeChar)
@@ -526,6 +633,20 @@ activateBarrierFromXML = function()
         local bSuccess = ME5eCombat.activateBarrier(nodeChar, nTicks);
         if bSuccess then
             ChatManager.SystemMessage("Barrier activated successfully!");
+            
+            -- Mark a barrier use as spent by checking the appropriate checkbox
+            local currentUses = DB.getValue(nodeChar, "barrier_uses", 0);
+            local maxUses = getBarrierUses(nodeChar);
+            local spentUses = maxUses - currentUses;
+            
+            -- Press the next unpressed label
+            if spentUses < maxUses then
+                local label = self["barrier_use_" .. (spentUses + 1)];
+                if label then
+                    label.setValue("■");
+                end
+            end
+            
             updateDefenseInterface();
             
             -- Refresh combat tracker to show updated barrier value
