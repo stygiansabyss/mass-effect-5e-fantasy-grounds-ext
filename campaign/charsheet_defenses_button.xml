@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<root>
+    <!-- Add Defenses Button to Character Sheet Main -->
+    <windowclass name="charsheet_main" merge="join">
+        <sheetdata>
+            <!-- Add a button to open the defenses window -->
+            <button_stringcycler name="defenses_button">
+                <anchored>
+                    <top anchor="abilities" offset="0,-30" />
+                    <left anchor="abilities" offset="0,0" />
+                </anchored>
+                <parameters>
+                    <defaultlabelres>Defenses</defaultlabelres>
+                    <labelsres>Defenses</labelsres>
+                    <values>defenses</values>
+                </parameters>
+                <tooltip text="Open Character Defenses Window" />
+                <script>
+					function onClickDown()
+						return true;
+					end
+                    function onClickRelease()
+                        local nodeChar = window.getDatabaseNode();
+                        if nodeChar then
+                            local sCharID = DB.getPath(nodeChar);
+                            local wDefenses = Interface.openWindow("me5e_defenses", nil);
+                            if wDefenses then
+                                wDefenses.bringToFront();
+                            end
+                        end
+                    end
+                    
+                    function onInit()
+                        -- Check if character has any of the defense features
+                        updateButtonVisibility();
+                    end
+                    
+                    function updateButtonVisibility()
+                        -- For testing, always show the button
+                        if self.defenses_button then
+                            self.defenses_button.setVisible(true);
+                        end
+                    end
+                </script>
+            </button_stringcycler>
+        </sheetdata>
+    </windowclass>
+</root>
