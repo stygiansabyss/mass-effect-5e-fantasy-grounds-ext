@@ -469,13 +469,14 @@ function updateBarrierUsesCheckboxes(nodeChar)
             ChatManager.SystemMessage("Box " .. i .. ": maxUses=" .. maxUses .. ", i=" .. i .. ", i<=maxUses=" .. tostring(i <= maxUses));
             if i <= maxUses then
                 label.setVisible(true);
-                -- Label shows ■ if this use has been spent (i > currentUses), □ if available
-                if i > currentUses then
+                -- Fill left to right: Label shows ■ if this use has been spent (i <= maxUses - currentUses), □ if available
+                local spentUses = maxUses - currentUses;
+                if i <= spentUses then
                     label.setValue("■");
                 else
                     label.setValue("□");
                 end
-                ChatManager.SystemMessage("Box " .. i .. ": visible, value=" .. (i > currentUses and "■" or "□"));
+                ChatManager.SystemMessage("Box " .. i .. ": visible, value=" .. (i <= spentUses and "■" or "□"));
             else
                 label.setVisible(false);
                 ChatManager.SystemMessage("Box " .. i .. ": hidden");
@@ -610,6 +611,26 @@ activateBarrierFromXML = function()
 
     ChatManager.SystemMessage("Character node found: " .. nodeChar.getNodeName());
 
+    -- Get barrier ticks for this character's class
+    local nTicks = getBarrierTicksForClass(nodeChar);
+    if nTicks <= 0 then
+        ChatManager.SystemMessage("No barrier ticks available!");
+        return;
+    end
+
+    ChatManager.SystemMessage("Barrier ticks: " .. nTicks);
+    
+    -- Check current barrier value    
+    local nodeCT = ActorManager.getCTNode(nodeChar);
+    local currentBarrier = DB.getValue(nodeCT, "barrier", 0);
+    ChatManager.SystemMessage("Current barrier: " .. currentBarrier);
+    
+    -- If current barrier equals the ticks we would give, don't use a barrier use
+    if currentBarrier >= nTicks then
+        ChatManager.SystemMessage("Character already has full barrier (" .. currentBarrier .. " >= " .. nTicks .. "). Not using barrier use.");
+        return;
+    end
+
     -- Check if we have uses remaining
     local nUses = getBarrierUses(nodeChar);
     if nUses == 0 or nUses < 0 then
@@ -618,14 +639,6 @@ activateBarrierFromXML = function()
     end
 
     ChatManager.SystemMessage("Barrier uses available: " .. nUses);
-    
-    -- Get barrier ticks for this character's class
-    local nTicks = getBarrierTicksForClass(nodeChar);
-    if nTicks <= 0 then
-        return;
-    end
-
-    ChatManager.SystemMessage("Barrier ticks: " .. nTicks);
 
     -- Use the function from the combat script
     if ME5eCombat and ME5eCombat.activateBarrier then
@@ -650,7 +663,6 @@ activateBarrierFromXML = function()
             updateDefenseInterface();
             
             -- Refresh combat tracker to show updated barrier value
-            local nodeCT = ActorManager.getCTNode(nodeChar);
             if nodeCT then
                 -- Force refresh by updating the field again
                 local currentBarrier = DB.getValue(nodeChar, "barrier", 0);
