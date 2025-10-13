@@ -189,14 +189,11 @@ function showBarrierChoiceDialog(rTarget)
         showBarrierInputDialog(rTarget, nBarrier, nDicePerTick, nBarrierDie);
     else
         -- Everyone else automatically uses 1 tick
-        Debug.console("Non-Vanguard or level < 3, automatically using 1 barrier tick");
-        ChatManager.SystemMessage("Barrier Defense: Using 1 barrier tick (" .. (nDicePerTick == 2 and "2d8" or "1d8") .. ")");
         rollBarrier(rTarget, 1, nDicePerTick);
     end
 end
 
 function showBarrierInputDialog(rTarget, nBarrier, nDicePerTick, nBarrierDie)
-    Debug.console("Showing barrier input dialog");
     
     -- Create selection dialog using DialogManager
     local sMessage = string.format("How many barrier ticks do you want to spend?\n\nYou have %d barrier ticks available.\nEach tick provides %s damage reduction.", 
@@ -248,12 +245,9 @@ function handleBarrierSelection(selection, data, rTarget, nBarrier, nDicePerTick
     
     if nTicksSpent == 0 then
         -- No barrier
-        Debug.console("No barrier spent");
-        ChatManager.SystemMessage("Barrier Defense: No barrier spent");
         checkShields(aSource, rTarget);
     else
         -- Use selected amount
-        Debug.console("Using " .. nTicksSpent .. " barrier ticks");
         rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie);
     end
 end
@@ -327,31 +321,32 @@ function activateBarrier(nodeChar, nBarrierTicks)
     -- Set current barrier ticks
     DB.setValue(nodeChar, "barrier", "number", nBarrierTicks);
     
-    ChatManager.SystemMessage("Barrier activated! Gained " .. nBarrierTicks .. " barrier ticks. Uses remaining: " .. nNewUses);
     return true;
 end
 
-function activateTechArmor(nodeChar)
+function activateTechArmor(nodeChar, nTechArmorHP)
     -- This function can be called from the character sheet
     local nUses = tonumber(DB.getValue(nodeChar, "techarmor_uses", 0));
     if nUses <= 0 then
-        ChatManager.SystemMessage("No tech armor uses remaining!");
         return false;
     end
     
     -- Reduce uses by 1
     local nNewUses = nUses - 1;
-    DB.setValue(nodeChar, "techarmor_uses", "string", tostring(nNewUses));
+    DB.setValue(nodeChar, "techarmor_uses", "number", nNewUses);
     
-    -- Calculate tech armor value: (Sentinel class level + INT modifier) * 2
-    local nSentinelLevel = getSentinelLevel(nodeChar);
-    local nIntMod = getAbilityModifier(nodeChar, "intelligence");
-    local nTechArmorValue = (nSentinelLevel + nIntMod) * 2;
+    -- Use the provided tech armor HP value
+    local nTechArmorValue = nTechArmorHP or ((getSentinelLevel(nodeChar) + getAbilityModifier(nodeChar, "intelligence")) * 2);
     
-    -- Set current tech armor
-    DB.setValue(nodeChar, "techarmor", "number", tonumber(nTechArmorValue));
+    -- Set current tech armor on character node
+    DB.setValue(nodeChar, "tech_armor_hp", "number", nTechArmorValue);
     
-    ChatManager.SystemMessage("Tech Armor activated! Gained " .. nTechArmorValue .. " tech armor. Uses remaining: " .. nNewUses);
+    -- Also set on combat tracker node
+    local nodeCT = ActorManager.getCTNode(nodeChar);
+    if nodeCT then
+        DB.setValue(nodeCT, "tech_armor_hp", "number", nTechArmorValue);
+    end
+    
     return true;
 end
 
@@ -380,18 +375,15 @@ function getVanguardNode(nodeTarget)
         -- Check all classes to find if any are Vanguard (or other ME5e classes)
         local nClassCount = DB.getChildCount(nodeClasses);
         local sFirstClass = nil;
-        Debug.console("Found " .. nClassCount .. " classes");
         
         -- Get all child nodes and iterate through them (don't assume sequential IDs)
         local aChildren = DB.getChildren(nodeClasses);
         for _, nodeClass in pairs(aChildren) do
             if nodeClass then
                 local sClass = DB.getValue(nodeClass, "name", "");
-                Debug.console("Class name: '" .. sClass .. "'");
                 
                 -- Check if this is a ME5e class (prioritize Vanguard for barrier mechanics)
                 if sClass == "Vanguard" then
-                    Debug.console("Found Vanguard class!");
                     return nodeClass;
                 elseif sClass ~= "" and not sFirstClass then
                     -- Store the first non-empty class as fallback
@@ -402,20 +394,16 @@ function getVanguardNode(nodeTarget)
         
         -- If we found a class but no Vanguard, return the first class
         if sFirstClass then
-            Debug.console("Character class found: '" .. sFirstClass .. "' (no Vanguard)");
             return sFirstClass;
         end
     end
     
-    Debug.console("No Vanguard class found");
     return nil;
 end
 
 function rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie)
-    Debug.console("Rolling barrier - Ticks: " .. nTicksSpent .. ", Dice per tick: " .. nDicePerTick);
     
     if nTicksSpent <= 0 then
-        Debug.console("No ticks spent, skipping barrier");
         checkShields(aSource, rTarget);
         return;
     end

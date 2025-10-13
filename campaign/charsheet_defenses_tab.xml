@@ -38,7 +38,7 @@
     <windowclass name="charsheet_defenses_contents">
         <!-- ME5e Defenses section - positioned above weapons -->
         <margins control="0,0,0,2" />
-        <script file="scripts/charsheet_defenses_tab.lua" />
+        <script file="campaign/scripts/charsheet_defenses_tab.lua" />
         <sheetdata>
             <anchor_content_top />
             
@@ -246,34 +246,60 @@
             </label_charframetop>
             
             <label name="techarmor_uses_label">
-                <anchored to="techarmor_title" position="below" offset="0,10">
-                    <left offset="10" />
+                <anchored to="techarmor_title" position="below" width="200" offset="0,10">
+                    <left offset="0" />
                 </anchored>
-                <static textres="me5e_techarmor_uses" />
+                <static text="Tech Armor Uses:" />
             </label>
-            <number_content_column name="techarmor_uses">
-                <anchored to="techarmor_uses_label" position="right" offset="10,0">
-                    <top />
+            
+            <!-- Tech Armor Use Labels (max 2) -->
+            <label name="techarmor_use_1">
+                <anchored to="techarmor_uses_label" position="below" width="15" height="15" offset="0,5">
+                    <left offset="0" />
                 </anchored>
-            </number_content_column>
-            <button_stringcycler name="techarmor_activate">
-                <anchored to="techarmor_uses_label" position="below" offset="0,10">
-                    <left offset="10" />
-                </anchored>
+                <static text="□" />
+                <tooltip text="Click to toggle tech armor use" />
                 <script>
-                    function onInit()
-                        ChatManager.SystemMessage("Button initialized!");
+                    function onClickDown()
+                        return true;
                     end
-                    function onButtonPress()
-                        ChatManager.SystemMessage("TEST: Button press is working!");
+                    function onClickRelease()
+                        window.toggleTechArmorUse(1);
                     end
                 </script>
-                <parameters>
-                    <defaultlabelres>me5e_techarmor_activate</defaultlabelres>
-                    <labelsres>me5e_techarmor_activate</labelsres>
-                    <values>activate</values>
-                </parameters>
-            </button_stringcycler>
+            </label>
+            <label name="techarmor_use_2">
+                <anchored to="techarmor_use_1" position="right" offset="2,0" width="15" height="15">
+                    <left offset="10" />
+                </anchored>
+                <static text="□" />
+                <tooltip text="Click to toggle tech armor use" />
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        window.toggleTechArmorUse(2);
+                    end
+                </script>
+            </label>
+            
+            <label name="techarmor_activate_test">
+                <anchored to="techarmor_use_1" position="below" offset="0,10" height="20" width="120">
+                    <left offset="0" />
+                </anchored>
+                <static text="[Activate Tech Armor]" />
+                <tooltip text="Click to activate tech armor" />
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        window.activateTechArmorFromXML();
+                    end
+                </script>
+            </label>
+            
         </sheetdata>
     </windowclass>
 </root>

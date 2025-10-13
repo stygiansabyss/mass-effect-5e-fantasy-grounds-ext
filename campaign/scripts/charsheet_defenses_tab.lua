@@ -245,7 +245,6 @@ function onClose()
 end
 
 function updateDefenseInterface()
-    ChatManager.SystemMessage("updateDefenseInterface called!");
     local nodeChar = getDatabaseNode();
     if not nodeChar then
         return;
@@ -280,10 +279,8 @@ function hasFeature(nodeChar, sFeatureName)
 end
 
 function checkBarrier(nodeChar)
-    ChatManager.SystemMessage("checkBarrier called!");
     -- Update Barrier section
     local hasBarrier = hasFeature(nodeChar, "Barrier");
-    ChatManager.SystemMessage("Has Barrier feature: " .. tostring(hasBarrier));
     
     if hasBarrier then
         -- Show barrier elements
@@ -303,7 +300,6 @@ function checkBarrier(nodeChar)
             self.barrier_activate_test.setEnabled(nUses > 0);
         end
     else
-        ChatManager.SystemMessage("Character does not have Barrier feature - hiding all elements");
         -- Hide barrier elements
         if self.barrier_title then self.barrier_title.setVisible(false); end
         if self.barrier_uses_label then self.barrier_uses_label.setVisible(false); end
@@ -325,30 +321,29 @@ function checkTechArmor(nodeChar)
 
     if hasTechArmor then
         -- Show tech armor elements
-        if self.techarmor_frame then self.techarmor_frame.setVisible(true); end
         if self.techarmor_title then self.techarmor_title.setVisible(true); end
         if self.techarmor_uses_label then self.techarmor_uses_label.setVisible(true); end
-        if self.techarmor_uses then 
-            self.techarmor_uses.setVisible(true);
-            local nUses = getTechArmorUsesForClass(nodeChar);
-            if nUses then
-                self.techarmor_uses.setValue(nUses);
-            else
-                self.techarmor_uses.setValue(0);
-            end
+        if self.techarmor_activate_test then 
+            self.techarmor_activate_test.setVisible(true);
+            local nUses = getTechArmorUses(nodeChar);
+            self.techarmor_activate_test.setEnabled(nUses > 0);
         end
-        if self.techarmor_activate then 
-            self.techarmor_activate.setVisible(true);
-            local nUses = getTechArmorUsesForClass(nodeChar);
-            self.techarmor_activate.setEnabled(nUses and nUses > 0);
-        end
+        
+        -- Update tech armor use checkboxes
+        updateTechArmorUsesCheckboxes(nodeChar);
     else
         -- Hide tech armor elements
-        if self.techarmor_frame then self.techarmor_frame.setVisible(false); end
         if self.techarmor_title then self.techarmor_title.setVisible(false); end
         if self.techarmor_uses_label then self.techarmor_uses_label.setVisible(false); end
-        if self.techarmor_uses then self.techarmor_uses.setVisible(false); end
-        if self.techarmor_activate then self.techarmor_activate.setVisible(false); end
+        if self.techarmor_activate_test then self.techarmor_activate_test.setVisible(false); end
+        
+        -- Hide all tech armor use boxes
+        for i = 1, 2 do
+            local label = self["techarmor_use_" .. i];
+            if label then
+                label.setVisible(false);
+            end
+        end
     end
 end
 
@@ -420,13 +415,11 @@ end
 function getBarrierUses(nodeChar)
     -- Calculate barrier uses from class and level - just take the highest from each class
     if not nodeChar then
-        ChatManager.SystemMessage("getBarrierUses: No character node");
         return 0;
     end
     
     local nodeClasses = DB.findNode(DB.getPath(nodeChar) .. ".classes");
     if not nodeClasses then
-        ChatManager.SystemMessage("getBarrierUses: No classes node found");
         return 0;
     end
     
@@ -436,22 +429,16 @@ function getBarrierUses(nodeChar)
     for _, nodeClass in pairs(DB.getChildren(nodeClasses)) do
         local className = DB.getValue(nodeClass, "name", "");
         local classLevel = DB.getValue(nodeClass, "level", 0);
-        
-        ChatManager.SystemMessage("getBarrierUses: Found class " .. className .. " level " .. classLevel);
-        
+              
         -- Get uses for this individual class
         if BARRIER_USES_BY_CLASS[className] and BARRIER_USES_BY_CLASS[className][classLevel] then
             local classUses = BARRIER_USES_BY_CLASS[className][classLevel];
-            ChatManager.SystemMessage("getBarrierUses: " .. className .. " level " .. classLevel .. " gives " .. classUses .. " uses");
             if classUses > maxUses then
                 maxUses = classUses;
             end
-        else
-            ChatManager.SystemMessage("getBarrierUses: No uses found for " .. className .. " level " .. classLevel);
         end
     end
     
-    ChatManager.SystemMessage("getBarrierUses: Returning maxUses=" .. maxUses);
     return maxUses;
 end
 
@@ -459,14 +446,11 @@ function updateBarrierUsesCheckboxes(nodeChar)
     -- Update the barrier uses checkboxes based on character's max uses and current uses
     local maxUses = getBarrierUses(nodeChar);
     local currentUses = DB.getValue(nodeChar, "barrier_uses", maxUses);
-    
-    ChatManager.SystemMessage("updateBarrierUsesCheckboxes: maxUses=" .. maxUses .. ", currentUses=" .. currentUses);
-    
+       
     -- Show/hide labels based on max uses
     for i = 1, 10 do
         local label = self["barrier_use_" .. i];
         if label then
-            ChatManager.SystemMessage("Box " .. i .. ": maxUses=" .. maxUses .. ", i=" .. i .. ", i<=maxUses=" .. tostring(i <= maxUses));
             if i <= maxUses then
                 label.setVisible(true);
                 -- Fill left to right: Label shows ■ if this use has been spent (i <= maxUses - currentUses), □ if available
@@ -476,13 +460,9 @@ function updateBarrierUsesCheckboxes(nodeChar)
                 else
                     label.setValue("□");
                 end
-                ChatManager.SystemMessage("Box " .. i .. ": visible, value=" .. (i <= spentUses and "■" or "□"));
             else
                 label.setVisible(false);
-                ChatManager.SystemMessage("Box " .. i .. ": hidden");
             end
-        else
-            ChatManager.SystemMessage("Box " .. i .. ": not found");
         end
     end
 end
@@ -517,30 +497,23 @@ end
 
 function toggleBarrierUse(nUseIndex)
     -- Called when a specific barrier use box is clicked
-    ChatManager.SystemMessage("toggleBarrierUse called for box " .. nUseIndex);
-    
     local nodeChar = getDatabaseNode();
     if not nodeChar then
-        ChatManager.SystemMessage("No character node found");
         return;
     end
     
     local label = self["barrier_use_" .. nUseIndex];
     if not label then
-        ChatManager.SystemMessage("Label " .. nUseIndex .. " not found");
         return;
     end
     
     local currentValue = label.getValue();
-    ChatManager.SystemMessage("Box " .. nUseIndex .. " current value: " .. currentValue);
     
     -- Toggle the box
     if currentValue == "□" then
         label.setValue("■");
-        ChatManager.SystemMessage("Box " .. nUseIndex .. " set to ■");
     else
         label.setValue("□");
-        ChatManager.SystemMessage("Box " .. nUseIndex .. " set to □");
     end
     
     -- Update the barrier_uses field
@@ -577,7 +550,6 @@ function getTechArmorUsesForClass(nodeChar)
 end
 
 onBarrierActivate = function()
-    ChatManager.SystemMessage("onBarrierActivate called!");
     local nodeChar = getDatabaseNode();
     if not nodeChar then
         return;
@@ -588,12 +560,9 @@ onBarrierActivate = function()
     if nTicks <= 0 then
         return;
     end
-
-    ChatManager.SystemMessage("Barrier ticks: " .. nTicks);
-    
+   
     -- Use the function from the combat script
     if ME5eCombat and ME5eCombat.activateBarrier then
-        Debug.console("Calling ME5eCombat.activateBarrier");
         local bSuccess = ME5eCombat.activateBarrier(nodeChar, nTicks);
         if bSuccess then
             updateDefenseInterface();
@@ -602,28 +571,20 @@ onBarrierActivate = function()
 end
 
 activateBarrierFromXML = function()
-    ChatManager.SystemMessage("activateBarrierFromXML called!");
     local nodeChar = getDatabaseNode();
     if not nodeChar then
-        ChatManager.SystemMessage("No character node found!");
         return;
     end
-
-    ChatManager.SystemMessage("Character node found: " .. nodeChar.getNodeName());
 
     -- Get barrier ticks for this character's class
     local nTicks = getBarrierTicksForClass(nodeChar);
     if nTicks <= 0 then
-        ChatManager.SystemMessage("No barrier ticks available!");
         return;
     end
-
-    ChatManager.SystemMessage("Barrier ticks: " .. nTicks);
-    
+   
     -- Check current barrier value    
     local nodeCT = ActorManager.getCTNode(nodeChar);
     local currentBarrier = DB.getValue(nodeCT, "barrier", 0);
-    ChatManager.SystemMessage("Current barrier: " .. currentBarrier);
     
     -- If current barrier equals the ticks we would give, don't use a barrier use
     if currentBarrier >= nTicks then
@@ -634,19 +595,13 @@ activateBarrierFromXML = function()
     -- Check if we have uses remaining
     local nUses = getBarrierUses(nodeChar);
     if nUses == 0 or nUses < 0 then
-        ChatManager.SystemMessage("No barrier uses remaining!");
         return;
     end
 
-    ChatManager.SystemMessage("Barrier uses available: " .. nUses);
-
     -- Use the function from the combat script
     if ME5eCombat and ME5eCombat.activateBarrier then
-        ChatManager.SystemMessage("Calling ME5eCombat.activateBarrier");
         local bSuccess = ME5eCombat.activateBarrier(nodeChar, nTicks);
-        if bSuccess then
-            ChatManager.SystemMessage("Barrier activated successfully!");
-            
+        if bSuccess then            
             -- Mark a barrier use as spent by checking the appropriate checkbox
             local currentUses = DB.getValue(nodeChar, "barrier_uses", 0);
             local maxUses = getBarrierUses(nodeChar);
@@ -667,33 +622,203 @@ activateBarrierFromXML = function()
                 -- Force refresh by updating the field again
                 local currentBarrier = DB.getValue(nodeChar, "barrier", 0);
                 DB.setValue(nodeCT, "barrier", "number", currentBarrier);
-                ChatManager.SystemMessage("Combat tracker refreshed!");
             end
-        else
-            ChatManager.SystemMessage("Barrier activation failed!");
         end
-    else
-        ChatManager.SystemMessage("Error: ME5eCombat.activateBarrier not found!");
     end
 end
 
-function onTechArmorActivate()
+-- Tech Armor Functions
+function getTechArmorUses(nodeChar)
+    -- Tech armor is only available to Sentinel class, always 2 uses
+    if not nodeChar then
+        return 0;
+    end
+    
+    local nodeClasses = DB.findNode(DB.getPath(nodeChar) .. ".classes");
+    if not nodeClasses then
+        return 0;
+    end
+    
+    -- Check if character has Sentinel class
+    for _, nodeClass in pairs(DB.getChildren(nodeClasses)) do
+        local className = DB.getValue(nodeClass, "name", "");
+        if className == "Sentinel" then
+            return 2;
+        end
+    end
+    
+    return 0;
+end
+
+function getTechArmorHP(nodeChar)
+    -- Calculate tech armor HP as (Sentinel level + INT modifier) x 2
+    if not nodeChar then
+        return 0;
+    end
+    
+    local nodeClasses = DB.findNode(DB.getPath(nodeChar) .. ".classes");
+    if not nodeClasses then
+        return 0;
+    end
+    
+    local sentinelLevel = 0;
+    for _, nodeClass in pairs(DB.getChildren(nodeClasses)) do
+        local className = DB.getValue(nodeClass, "name", "");
+        if className == "Sentinel" then
+            sentinelLevel = DB.getValue(nodeClass, "level", 0);
+            break;
+        end
+    end
+    
+    if sentinelLevel == 0 then
+        return 0;
+    end
+    
+    -- Get INT modifier
+    local intScore = DB.getValue(nodeChar, "abilities.intelligence.score", 10);
+    local intModifier = math.floor((intScore - 10) / 2);
+    
+    local techArmorHP = (sentinelLevel + intModifier) * 2;
+    
+    return techArmorHP;
+end
+
+function updateTechArmorUsesCheckboxes(nodeChar)
+    -- Update the tech armor uses checkboxes based on character's max uses and current uses
+    local maxUses = getTechArmorUses(nodeChar);
+    local currentUses = DB.getValue(nodeChar, "techarmor_uses", maxUses);
+       
+    -- Show/hide labels based on max uses (only 2 boxes)
+    for i = 1, 2 do
+        local label = self["techarmor_use_" .. i];
+        if label then
+            if i <= maxUses then
+                label.setVisible(true);
+                -- Fill left to right: Label shows ■ if this use has been spent (i <= maxUses - currentUses), □ if available
+                local spentUses = maxUses - currentUses;
+                if i <= spentUses then
+                    label.setValue("■");
+                else
+                    label.setValue("□");
+                end
+            else
+                label.setVisible(false);
+            end
+        end
+    end
+end
+
+function updateTechArmorUses()
+    -- Called when a button is clicked - update the techarmor_uses field
     local nodeChar = getDatabaseNode();
     if not nodeChar then
         return;
     end
     
-    -- Check if we have uses remaining
-    local nUses = getTechArmorUses(nodeChar);
-    if nUses <= 0 then
+    local maxUses = getTechArmorUses(nodeChar);
+    local spentUses = 0;
+    
+    -- Count spent uses
+    for i = 1, maxUses do
+        local label = self["techarmor_use_" .. i];
+        if label and label.getValue() == "■" then
+            spentUses = spentUses + 1;
+        end
+    end
+    
+    -- Update the techarmor_uses field
+    local remainingUses = maxUses - spentUses;
+    DB.setValue(nodeChar, "techarmor_uses", "number", remainingUses);
+    
+    -- Update button state
+    if self.techarmor_activate_test then
+        self.techarmor_activate_test.setEnabled(remainingUses > 0);
+    end
+end
+
+function toggleTechArmorUse(nUseIndex)
+    -- Called when a specific tech armor use box is clicked    
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
         return;
     end
     
+    local label = self["techarmor_use_" .. nUseIndex];
+    if not label then
+        return;
+    end
+    
+    local currentValue = label.getValue();
+    
+    -- Toggle the box
+    if currentValue == "□" then
+        label.setValue("■");
+    else
+        label.setValue("□");
+    end
+    
+    -- Update the techarmor_uses field
+    updateTechArmorUses();
+end
+
+activateTechArmorFromXML = function()
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
+        return;
+    end
+
+    -- Get tech armor HP for this character
+    local nTechArmorHP = getTechArmorHP(nodeChar);
+    if nTechArmorHP <= 0 then
+        return;
+    end
+    
+    -- Check current tech armor HP value    
+    local nodeCT = ActorManager.getCTNode(nodeChar);
+    local currentTechArmorHP = DB.getValue(nodeCT, "tech_armor_hp", 0);
+    
+    -- If current tech armor HP equals the HP we would give, don't use a tech armor use
+    if currentTechArmorHP >= nTechArmorHP then
+        ChatManager.SystemMessage("Character already has full tech armor HP (" .. currentTechArmorHP .. " >= " .. nTechArmorHP .. "). Not using tech armor use.");
+        return;
+    end
+
+    -- Check if we have uses remaining
+    local nUses = getTechArmorUses(nodeChar);
+    if nUses == 0 or nUses < 0 then
+        return;
+    end
+
     -- Use the function from the combat script
     if ME5eCombat and ME5eCombat.activateTechArmor then
-        local bSuccess = ME5eCombat.activateTechArmor(nodeChar);
-        if bSuccess then
+        local bSuccess = ME5eCombat.activateTechArmor(nodeChar, nTechArmorHP);
+        if bSuccess then            
+            -- Mark a tech armor use as spent by checking the appropriate checkbox
+            local currentUses = DB.getValue(nodeChar, "techarmor_uses", 0);
+            local maxUses = getTechArmorUses(nodeChar);
+            local spentUses = maxUses - currentUses;
+            
+            -- Press the next unpressed label (fill left to right)
+            if spentUses < maxUses then
+                local label = self["techarmor_use_" .. (spentUses + 1)];
+                if label then
+                    label.setValue("■");
+                end
+            end
+            
             updateDefenseInterface();
+            
+            -- Refresh combat tracker to show updated tech armor HP value
+            if nodeCT then
+                -- Force refresh by updating the field again
+                local currentTechArmorHP = DB.getValue(nodeChar, "tech_armor_hp", 0);
+                DB.setValue(nodeCT, "tech_armor_hp", "number", currentTechArmorHP);
+            end
         end
     end
+end
+
+function onTechArmorActivate()
+    -- Legacy function - redirect to new system
+    activateTechArmorFromXML();
 end

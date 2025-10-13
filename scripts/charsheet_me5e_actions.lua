@@ -127,7 +127,6 @@ function onBarrierActivate()
     -- Check if we have uses remaining
     local nUses = getBarrierUses();
     if nUses <= 0 then
-        ChatManager.SystemMessage("No barrier uses remaining!");
         return;
     end
     
@@ -137,8 +136,6 @@ function onBarrierActivate()
         if bSuccess then
             updateDefenseInterface();
         end
-    else
-        ChatManager.SystemMessage("Error: Combat script not loaded!");
     end
 end
 
@@ -151,7 +148,6 @@ function onTechArmorActivate()
     -- Check if we have uses remaining
     local nUses = getTechArmorUses();
     if nUses <= 0 then
-        ChatManager.SystemMessage("No tech armor uses remaining!");
         return;
     end
     
@@ -161,8 +157,6 @@ function onTechArmorActivate()
         if bSuccess then
             updateDefenseInterface();
         end
-    else
-        ChatManager.SystemMessage("Error: Combat script not loaded!");
     end
 end
 

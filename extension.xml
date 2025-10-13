@@ -35,18 +35,12 @@
         <script name="ME5eCombat" file="scripts/me5e-combat.lua" />
         <script name="ME5ePartyManager" file="scripts/me5e-ps2.lua" />
         <script name="ME5eCharacterClass" file="scripts/me5e-char-class.lua" />
-        <script name="ME5eDefensesWindow" file="scripts/me5e-defenses-window.lua" />
-        <script name="ME5eDefensesCommands" file="scripts/me5e-defenses-commands.lua" />
 
         <!-- Strings -->
         <includefile source="strings/strings.xml" />
 
         <!-- Custom Elements -->
-        <includefile source="campaign/charsheet_me5e_actions.xml" />
-        <includefile source="campaign/window_defenses.xml" />
-        <includefile source="campaign/test_window.xml" />
         <includefile source="campaign/charsheet_defenses_tab.xml" />
-        <includefile source="campaign/charsheet_defenses_button.xml" />
         <includefile source="campaign/record_char_notes.xml" />
          <includefile source="campaign/record_item.xml" />
         <includefile source="campaign/template_power.xml" />
