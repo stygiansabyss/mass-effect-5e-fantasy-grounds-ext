@@ -233,6 +233,10 @@ function updateDefenseInterface()
     
     -- Update Tech Armor section
     checkTechArmor(nodeChar);
+    
+    -- Update display labels
+    updateBarrierDisplay();
+    updateTechArmorDisplay();
 end
 
 function hasFeature(nodeChar, sFeatureName)
@@ -277,11 +281,15 @@ function checkBarrier(nodeChar)
             local nUses = getBarrierUses(nodeChar);
             self.barrier_activate_test.setEnabled(nUses > 0);
         end
+        if self.barrier_ticks_display then 
+            self.barrier_ticks_display.setVisible(true);
+        end
     else
         -- Hide barrier elements
         if self.barrier_title then self.barrier_title.setVisible(false); end
         if self.barrier_uses_label then self.barrier_uses_label.setVisible(false); end
         if self.barrier_activate_test then self.barrier_activate_test.setVisible(false); end
+        if self.barrier_ticks_display then self.barrier_ticks_display.setVisible(false); end
         
         -- Hide all barrier use checkboxes
         for i = 1, 10 do
@@ -306,6 +314,9 @@ function checkTechArmor(nodeChar)
             local nUses = getTechArmorUses(nodeChar);
             self.techarmor_activate_test.setEnabled(nUses > 0);
         end
+        if self.techarmor_hp_display then 
+            self.techarmor_hp_display.setVisible(true);
+        end
         
         -- Update tech armor use checkboxes
         updateTechArmorUsesCheckboxes(nodeChar);
@@ -314,6 +325,7 @@ function checkTechArmor(nodeChar)
         if self.techarmor_title then self.techarmor_title.setVisible(false); end
         if self.techarmor_uses_label then self.techarmor_uses_label.setVisible(false); end
         if self.techarmor_activate_test then self.techarmor_activate_test.setVisible(false); end
+        if self.techarmor_hp_display then self.techarmor_hp_display.setVisible(false); end
         
         -- Hide all tech armor use boxes
         for i = 1, 2 do
@@ -842,4 +854,53 @@ function sendTechArmorActivationMessage(nodeChar, nPreviousHP, nNewHP)
         nPreviousHP, nNewHP, nHPGained);
     
     Comm.deliverChatMessage(msg);
+end
+
+-- Display update functions
+function updateBarrierDisplay()
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
+        return;
+    end
+    
+    -- Check if character has barrier feature
+    if not hasFeature(nodeChar, "Barrier") then
+        return;
+    end
+    
+    -- Get barrier ticks for this character
+    local nTicks = getBarrierTicksForClass(nodeChar);
+    if nTicks <= 0 then
+        return;
+    end
+    
+    -- Update display label to show how many ticks they'll get
+    if self.barrier_ticks_display then
+        local sText = string.format("Grants: %d ticks", nTicks);
+        self.barrier_ticks_display.setValue(sText);
+    end
+end
+
+function updateTechArmorDisplay()
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
+        return;
+    end
+    
+    -- Check if character has tech armor feature
+    if not hasFeature(nodeChar, "Tech Armor") then
+        return;
+    end
+    
+    -- Get tech armor HP for this character
+    local nTechArmorHP = getTechArmorHP(nodeChar);
+    if nTechArmorHP <= 0 then
+        return;
+    end
+    
+    -- Update display label to show how much HP they'll get
+    if self.techarmor_hp_display then
+        local sText = string.format("Grants: %d HP", nTechArmorHP);
+        self.techarmor_hp_display.setValue(sText);
+    end
 end
