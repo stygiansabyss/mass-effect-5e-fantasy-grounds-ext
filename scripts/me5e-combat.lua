@@ -81,15 +81,15 @@ function messageDamage(rSource, rTarget, rRoll)
         return ;
     end
 
-    -- TODO: Get bypass working
-    -- Barrier has to be handled uniquely since it requires a roll.
-    --local bBypassBarrier = hasEffect("BYPBARRIER");
-    --
-    --if bBypassBarrier then
-    --    sendBypassMessage("Barrier");
-    --    removeEffect("BYPBARRIER");
-    --end
     sendStartingDamageMessage();
+    
+    local bBypassBarrier = hasWarpAmmoEffect(rSource);
+
+    if bBypassBarrier then
+        handleWarpAmmo(aDamageRoll.nTotal, rTarget, rRoll);
+        checkShields(rSource, rTarget);
+        return ;
+    end
 
     if nBarrier > 0 then
         showBarrierChoiceDialog(rTarget);
@@ -426,6 +426,66 @@ function rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie)
     ActionsManager.performAction(nil, aTarget, rRoll);
 end
 
+function hasWarpAmmoEffect(rSource)
+    -- Check if the source has an active effect with "Warp Ammo" text
+    if not rSource then
+        return false;
+    end
+    
+    local nodeCT = ActorManager.getCTNode(rSource);
+    if not nodeCT then
+        return false;
+    end
+    
+    local nodeEffects = nodeCT.getChild("effects");
+    if not nodeEffects then
+        return false;
+    end
+    
+    local aEffects = DB.getChildren(nodeEffects);
+    for _, nodeEffect in pairs(aEffects) do
+        local sEffectName = DB.getValue(nodeEffect, "label", "");
+        if string.find(string.lower(sEffectName), "warp ammo") then
+            return true;
+        end
+    end
+    
+    return false;
+end
+
+function handleWarpAmmo(nDamage, rTarget, rRoll)
+    -- Warp Ammo: Remove 2 barrier ticks, no damage reduction
+    local nTicksSpent = math.min(2, nBarrier);
+    local nBarrierTicks = nBarrier - nTicksSpent;
+    local sBarrierStatus;
+    
+    if nBarrierTicks > 0 then
+        sBarrierStatus = "Yes";
+    end
+
+    DB.setValue(aCTNode, "barrier", "number", nBarrierTicks);
+    DB.setValue(aCTNode, "barrier_status", "string", sBarrierStatus);
+    
+    -- Send Warp Ammo message
+    sendWarpAmmoBarrierMessage(nDamage, rTarget, rRoll, nTicksSpent);
+end
+
+function sendWarpAmmoBarrierMessage(nDamage, rSource, rRoll, nTicksSpent)
+    
+    local msg = { font = "msgfont", icon = "roll_barrier" };
+
+    msg.text = string.format("[Warp Ammo] Barrier bypassed - " .. nTicksSpent .. " barrier ticks removed, no damage reduction.");
+
+    ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
+
+    -- Send a special message for Warp Ammo barrier interaction
+    --local rMessage = ActionsManager.createActionMessage(rSource, nil);
+    
+    --rMessage.text = "[WARP AMMO] Barrier bypassed - " .. nTicksSpent .. " barrier ticks removed, no damage reduction.";
+    
+    --Comm.deliverChatMessage(rMessage);
+end
+
 function handleBarrier(rSource, rTarget, rRoll, msg)
     Debug.console(originalMsgOOB);
     Debug.console(msg);
@@ -435,11 +495,7 @@ function handleBarrier(rSource, rTarget, rRoll, msg)
     local nTicksSpent = rRoll.nTicksSpent or 1; -- Fallback for old rolls
     local nBarrierTicks = nBarrier - nTicksSpent;
     local sBarrierStatus;
-
-    if nBarrierTicks > 0 then
-        sBarrierStatus = "Yes";
-    end
-
+    
     remainingDamage = nDamage - nBarrierHp;
     
     -- Track the amount reduced
@@ -450,6 +506,10 @@ function handleBarrier(rSource, rTarget, rRoll, msg)
     end
 
     sendBarrierMessage(nDamage, rRoll.nTotal, rSource, rRoll, nTicksSpent);
+
+    if nBarrierTicks > 0 then
+        sBarrierStatus = "Yes";
+    end
 
     nBarrier = nBarrierTicks;
     DB.setValue(aCTNode, "barrier", "number", nBarrierTicks);

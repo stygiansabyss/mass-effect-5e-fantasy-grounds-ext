@@ -7,6 +7,8 @@
     * Based on values found in inventory
 * Added "Tough Shields" effect
   * When set, character shields do not take double damage from lightning
+* Added "Warp Ammo" effect
+  * Bypasses barrier, removes 2 ticks.
 
 # Jan 19 2025
 
