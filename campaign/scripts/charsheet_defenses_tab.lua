@@ -216,10 +216,55 @@ local BARRIER_TICKS_BY_CLASS = {
 function onInit()
     -- Initialize the interface
     updateDefenseInterface();
+    
+    -- Add handlers for inventory changes
+    local nodeChar = getDatabaseNode();
+    if nodeChar then
+        local sCharPath = DB.getPath(nodeChar);
+        
+        -- Use a broader pattern to catch inventory changes
+        DB.addHandler(sCharPath .. ".inventorylist", "onChildAdded", onInventoryChanged);
+        DB.addHandler(sCharPath .. ".inventorylist", "onChildDeleted", onInventoryChanged);
+        DB.addHandler(sCharPath .. ".inventorylist", "onChildUpdate", onInventoryChanged);
+        
+        -- Also add handlers for individual inventory items
+        DB.addHandler(sCharPath .. ".inventorylist.*", "onUpdate", onInventoryItemChanged);
+    end
 end
 
 function onClose()
-    -- Clean up if needed
+    -- Remove inventory change handlers
+    local nodeChar = getDatabaseNode();
+    if nodeChar then
+        local sCharPath = DB.getPath(nodeChar);
+        
+        DB.removeHandler(sCharPath .. ".inventorylist", "onChildAdded", onInventoryChanged);
+        DB.removeHandler(sCharPath .. ".inventorylist", "onChildDeleted", onInventoryChanged);
+        DB.removeHandler(sCharPath .. ".inventorylist", "onChildUpdate", onInventoryChanged);
+        DB.removeHandler(sCharPath .. ".inventorylist.*", "onUpdate", onInventoryItemChanged);
+    end
+end
+
+function onInventoryChanged(nodeInventory)
+    -- The handler returns the inventorylist node, not individual items
+    if not nodeInventory then
+        return;
+    end
+    
+    -- Just update shields display whenever inventory changes
+    -- We'll let getShieldValuesFromArmor scan all items
+    updateShieldsDisplay();
+end
+
+function onInventoryItemChanged(nodeItem)
+    -- Handle individual item property changes
+    if not nodeItem then
+        return;
+    end
+    
+    -- Update shields display for any item property change
+    -- This catches changes to carried status, shield_max, shield_regen, etc.
+    updateShieldsDisplay();
 end
 
 function updateDefenseInterface()
@@ -237,6 +282,9 @@ function updateDefenseInterface()
     -- Update display labels
     updateBarrierDisplay();
     updateTechArmorDisplay();
+    
+    -- Update shields section
+    updateShieldsDisplay();
 end
 
 function hasFeature(nodeChar, sFeatureName)
@@ -903,4 +951,183 @@ function updateTechArmorDisplay()
         local sText = string.format("Grants: %d HP", nTechArmorHP);
         self.techarmor_hp_display.setValue(sText);
     end
+end
+
+-- ========================================
+-- KINETIC SHIELDS FUNCTIONS
+-- ========================================
+
+function updateShieldsDisplay()
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
+        return;
+    end
+    
+    -- Check if UI controls exist
+    if not self.shields_max_display or not self.shields_regen_display then
+        return;
+    end
+    
+    -- Get shield values from equipped armor
+    local nMaxShields, nRegenAmount = getShieldValuesFromArmor(nodeChar);
+    
+    -- Update display labels
+    local sMaxText = string.format("Max: %d", nMaxShields);
+    local sRegenText = string.format("Regen: %d", nRegenAmount);
+    
+    self.shields_max_display.setValue(sMaxText);
+    self.shields_regen_display.setValue(sRegenText);
+end
+
+function getShieldValuesFromArmor(nodeChar)
+    local nMaxShields = 0;
+    local nRegenAmount = 0;
+    
+    -- Look through inventory for equipped armor
+    local nodeInventory = nodeChar.getChild("inventorylist");
+    if nodeInventory then
+        local aItems = DB.getChildren(nodeInventory);
+        
+        for _, nodeItem in pairs(aItems) do
+            local sItemType = DB.getValue(nodeItem, "type", "");
+            local bCarried = DB.getValue(nodeItem, "carried", 0) == 2;
+            
+            -- Check if this is equipped armor
+            if sItemType == "Armor" and bCarried then
+                local nItemMaxShields = DB.getValue(nodeItem, "shield_max", 0);
+                local nItemRegen = DB.getValue(nodeItem, "shield_regen", 0);
+                
+                -- Add to totals (in case multiple armor pieces)
+                nMaxShields = nMaxShields + nItemMaxShields;
+                nRegenAmount = nRegenAmount + nItemRegen;
+            end
+            
+            -- Check if this is an equipped armor mod
+            if sItemType == "Armor Mod" and bCarried then
+                local sDescription = DB.getValue(nodeItem, "description", "");
+                local nModMaxShields, nModRegen = parseArmorModDescription(sDescription);
+                
+                -- Add mod bonuses to totals
+                nMaxShields = nMaxShields + nModMaxShields;
+                nRegenAmount = nRegenAmount + nModRegen;
+            end
+        end
+    end
+    
+    return nMaxShields, nRegenAmount;
+end
+
+function parseArmorModDescription(sDescription)
+    -- Parse armor mod descriptions to extract shield bonuses
+    -- Pattern: "Increase your shield points by X" -> shield_max
+    -- Pattern: "Increase your shield regen by X" -> shield_regen
+    
+    if not sDescription or sDescription == "" then
+        return 0, 0; -- max, regen
+    end
+    
+    -- Look for shield_max pattern: "Increase your shield points by X"
+    local nShieldMax = string.match(sDescription, "Increase your shield points by (%d+)");
+    if nShieldMax then
+        return tonumber(nShieldMax), 0; -- max, regen
+    end
+    
+    -- Look for shield_regen pattern: "Increase your shield regen by X"
+    local nShieldRegen = string.match(sDescription, "Increase your shield regen by (%d+)");
+    if nShieldRegen then
+        return 0, tonumber(nShieldRegen); -- max, regen
+    end
+    
+    -- No shield mod found
+    return 0, 0; -- max, regen
+end
+
+function setShieldsToMax()
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
+        return;
+    end
+    
+    -- Get max shields from armor
+    local nMaxShields, nRegenAmount = getShieldValuesFromArmor(nodeChar); 
+    
+    if nMaxShields <= 0 then
+        ChatManager.SystemMessage("No shield-capable armor equipped");
+        return;
+    end
+    
+    -- Update combat tracker shields
+    local sCharID = DB.getPath(nodeChar);
+    local nodeCT = ActorManager.getCTNode(nodeChar);
+    if nodeCT then
+        local nCurrentShields = DB.getValue(nodeCT, "shields", 0);
+        
+        -- Check if shields are already at maximum
+        if nCurrentShields >= nMaxShields then
+            local sCharName = DB.getValue(nodeChar, "name", "");
+            ChatManager.SystemMessage(string.format("[%s] Shields are already at maximum (%d/%d)", sCharName, nCurrentShields, nMaxShields));
+            return;
+        end
+        
+        DB.setValue(nodeCT, "shields", "number", nMaxShields);
+        
+        sendShieldUpdateMessage(nodeChar, nCurrentShields, nMaxShields);
+    else
+        ChatManager.SystemMessage("Character not found in combat tracker");
+    end
+end
+
+function addShieldRegen()
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
+        return;
+    end
+    
+    -- Get regen amount from armor
+    local nMaxShields, nRegenAmount = getShieldValuesFromArmor(nodeChar);
+    
+    if nRegenAmount <= 0 then
+        ChatManager.SystemMessage("No shield regeneration from equipped armor");
+        return;
+    end
+    
+    -- Update combat tracker shields
+    local sCharID = DB.getPath(nodeChar);
+    local nodeCT = ActorManager.getCTNode(nodeChar);
+    if nodeCT then
+        local nCurrentShields = DB.getValue(nodeCT, "shields", 0);
+        
+        -- Check if shields are already at maximum
+        if nCurrentShields >= nMaxShields then
+            local sCharName = DB.getValue(nodeChar, "name", "");
+            ChatManager.SystemMessage(string.format("[%s] Shields are already at maximum (%d/%d)", sCharName, nCurrentShields, nMaxShields));
+            return;
+        end
+        
+        local nNewShields = math.min(nCurrentShields + nRegenAmount, nMaxShields);
+        
+        DB.setValue(nodeCT, "shields", "number", nNewShields);
+        
+        sendShieldUpdateMessage(nodeChar, nCurrentShields, nNewShields);
+    else
+        ChatManager.SystemMessage("Character not found in combat tracker");
+    end
+end
+
+function sendShieldUpdateMessage(nodeChar, nPreviousShields, nNewShields)
+    local sCharName = DB.getValue(nodeChar, "name", "");
+    local nShieldsGained = nNewShields - nPreviousShields;
+    local sToken = DB.getValue(nodeChar, "token", "");
+    
+    -- Create a message with the defense icon
+    local msg = {
+        font = "msgfont", 
+        icon = "roll_shields",
+        sender = sCharName
+    };
+    
+    msg.text = string.format("[Defense] Kinetic Shields [%d -> %d] (+%d)", 
+        nPreviousShields, nNewShields, nShieldsGained);
+    
+    Comm.deliverChatMessage(msg);
 end
