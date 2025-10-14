@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<root>
+    <!-- Test strings for ME5e Actions -->
+    <string name="me5e_actions_label">ME5e</string>
+    <string name="test_action_label">Test</string>
+
+    <!-- Modify the actions contents to include ME5e content -->
+    <windowclass name="charsheet_actions_contents" merge="join">
+        <script file="campaign/scripts/me5e_actions_test.lua" />
+        <sheetdata>
+            <!-- Add ME5e section at the very top -->
+            <label_charframetop name="me5e_header">
+                <anchored to="contentanchor" height="20">
+                    <top relation="relative" offset="2" postoffset="2" />
+					<left offset="10" />
+					<right offset="-10" />
+                </anchored>
+                <icons>char_attacks</icons>
+                <static text="Mass Effect 5e Powers" />
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        local bVisible = window.me5e_powers.isVisible();
+                        if bVisible then
+                            setFont("subwindowsmalltitle_disabled");
+                            window.me5e_powers.setVisible(false);
+                        else
+                            setFont("subwindowsmalltitle");
+                            window.me5e_powers.setVisible(true);
+                        end
+                        return true;
+                    end
+                </script>
+            </label_charframetop>
+            
+            <!-- ME5e powers content area -->
+            <area_content_top name="me5e_powers">
+                <anchored to="me5e_header" position="below" offset="0,2" />
+                <class>me5e_powers_content</class>
+            </area_content_top>
+            
+            <!-- Restore original weapons header positioning -->
+            <label_charframetop name="weapon_header" merge="replace">
+                <anchored to="contentanchor" height="20">
+                    <top relation="relative" offset="8" postoffset="8" />
+					<left offset="10" />
+					<right offset="-10" />
+                </anchored>
+                <icons>char_attacks</icons>
+                <static textres="char_label_weapon" />
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        local bVisible = window.weapons.isVisible();
+                        if bVisible then
+                            setFont("subwindowsmalltitle_disabled");
+                            window.weapons.setVisible(false);
+                        else
+                            setFont("subwindowsmalltitle");
+                            window.weapons.setVisible(true);
+                        end
+                        return true;
+                    end
+                </script>
+            </label_charframetop>
+            
+        </sheetdata> 
+    </windowclass>
+    
+    <!-- ME5e powers content -->
+    <windowclass name="me5e_powers_content">
+        <margins control="0,0,0,2" />
+        <sheetdata>
+            <anchor_content_top />
+            
+            <!-- Test biotic power button -->
+            <label name="test_biotic_button">
+                <anchored to="contentanchor" position="below" width="120" height="20" offset="0,15">
+                    <left offset="10" />
+                </anchored>
+                <static text="[Test Biotic Power]" />
+                <tooltip text="Click to test biotic power functionality" />
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        self.testBioticPower();
+                    end
+                </script>
+            </label>
+            
+            <!-- Test tech power button -->
+            <label name="test_tech_button">
+                <anchored to="test_biotic_button" position="right" offset="10,0" width="120" height="20">
+                    <left offset="0" />
+                </anchored>
+                <static text="[Test Tech Power]" />
+                <tooltip text="Click to test tech power functionality" />
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        self.testTechPower();
+                    end
+                </script>
+            </label>
+            
+            <!-- Test combat power button -->
+            <label name="test_combat_button">
+                <anchored to="test_biotic_button" position="below" offset="0,10" width="120" height="20">
+                    <left offset="0" />
+                </anchored>
+                <static text="[Test Combat Power]" />
+                <tooltip text="Click to test combat power functionality" />
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        self.testCombatPower();
+                    end
+                </script>
+            </label>
+            
+            <!-- Test status display -->
+            <label name="test_status_label">
+                <anchored to="test_combat_button" position="right" offset="10,0" width="200" height="20">
+                    <left offset="0" />
+                </anchored>
+                <static text="Status: Ready for testing" />
+            </label>
+            
+            <!-- Test counter -->
+            <label name="test_counter_label">
+                <anchored to="test_status_label" position="below" offset="0,5" width="200" height="15">
+                    <left offset="0" />
+                </anchored>
+                <static text="Test Counter: 0" />
+            </label>
+            
+        </sheetdata>
+    </windowclass>
+</root>

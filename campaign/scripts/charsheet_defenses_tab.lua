@@ -97,28 +97,6 @@ local BARRIER_USES_BY_CLASS = {
         [19] = 6,
         [20] = 6
     },
-    ["MULTI"] = {
-        [1] = 2,
-        [2] = 2,
-        [3] = 3,
-        [4] = 3,
-        [5] = 4,
-        [6] = 4,
-        [7] = 4,
-        [8] = 4,
-        [9] = 4,
-        [10] = 5,
-        [11] = 5,
-        [12] = 5,
-        [13] = 5,
-        [14] = 5,
-        [15] = 5,
-        [16] = 5,
-        [17] = 6,
-        [18] = 6,
-        [19] = 6,
-        [20] = 6
-    }
 };
 
 -- Barrier ticks by class and level
@@ -146,48 +124,48 @@ local BARRIER_TICKS_BY_CLASS = {
         [20] = 10
     },
     ["Sentinel"] = {
-        [1] = 2,
-        [2] = 2,
+        [1] = 3,
+        [2] = 3,
         [3] = 3,
         [4] = 3,
         [5] = 4,
         [6] = 4,
-        [7] = 5,
-        [8] = 5,
-        [9] = 6,
-        [10] = 6,
-        [11] = 7,
-        [12] = 7,
-        [13] = 8,
-        [14] = 8,
-        [15] = 9,
-        [16] = 9,
-        [17] = 10,
-        [18] = 10,
-        [19] = 11,
-        [20] = 11
+        [7] = 4,
+        [8] = 4,
+        [9] = 5,
+        [10] = 5,
+        [11] = 5,
+        [12] = 5,
+        [13] = 6,
+        [14] = 6,
+        [15] = 6,
+        [16] = 6,
+        [17] = 7,
+        [18] = 7,
+        [19] = 8,
+        [20] = 8
     },
     ["Adept"] = {
         [1] = 2,
         [2] = 2,
-        [3] = 3,
-        [4] = 3,
-        [5] = 3,
-        [6] = 4,
-        [7] = 4,
-        [8] = 4,
-        [9] = 4,
-        [10] = 4,
-        [11] = 4,
-        [12] = 4,
-        [13] = 5,
-        [14] = 5,
-        [15] = 5,
-        [16] = 5,
-        [17] = 6,
-        [18] = 6,
-        [19] = 6,
-        [20] = 6
+        [3] = 2,
+        [4] = 2,
+        [5] = 2,
+        [6] = 2,
+        [7] = 3,
+        [8] = 3,
+        [9] = 3,
+        [10] = 3,
+        [11] = 3,
+        [12] = 3,
+        [13] = 4,
+        [14] = 4,
+        [15] = 4,
+        [16] = 4,
+        [17] = 4,
+        [18] = 4,
+        [19] = 5,
+        [20] = 5
     },
     ["Explorer"] = {
         [1] = 3,
@@ -601,7 +579,10 @@ activateBarrierFromXML = function()
     -- Use the function from the combat script
     if ME5eCombat and ME5eCombat.activateBarrier then
         local bSuccess = ME5eCombat.activateBarrier(nodeChar, nTicks);
-        if bSuccess then            
+        if bSuccess then
+            -- Send activation message
+            sendBarrierActivationMessage(nodeChar, currentBarrier, nTicks);
+            
             -- Mark a barrier use as spent by checking the appropriate checkbox
             local currentUses = DB.getValue(nodeChar, "barrier_uses", 0);
             local maxUses = getBarrierUses(nodeChar);
@@ -792,7 +773,10 @@ activateTechArmorFromXML = function()
     -- Use the function from the combat script
     if ME5eCombat and ME5eCombat.activateTechArmor then
         local bSuccess = ME5eCombat.activateTechArmor(nodeChar, nTechArmorHP);
-        if bSuccess then            
+        if bSuccess then
+            -- Send activation message
+            sendTechArmorActivationMessage(nodeChar, currentTechArmorHP, nTechArmorHP);
+            
             -- Mark a tech armor use as spent by checking the appropriate checkbox
             local currentUses = DB.getValue(nodeChar, "techarmor_uses", 0);
             local maxUses = getTechArmorUses(nodeChar);
@@ -821,4 +805,41 @@ end
 function onTechArmorActivate()
     -- Legacy function - redirect to new system
     activateTechArmorFromXML();
+end
+
+-- Chat messaging functions for defense activation
+function sendBarrierActivationMessage(nodeChar, nPreviousTicks, nNewTicks)
+    local sCharName = DB.getValue(nodeChar, "name", "");
+    local nTicksGained = nNewTicks - nPreviousTicks;
+    local sToken = DB.getValue(nodeChar, "token", "");
+    
+    -- Create a message with the defense icon
+    local msg = { 
+        font = "msgfont", 
+        icon = "roll_barrier",
+        sender = sCharName
+    };
+    
+    msg.text = string.format("[Defense] Biotic Barrier [%d -> %d] (+%d ticks)", 
+        nPreviousTicks, nNewTicks, nTicksGained);
+    
+    Comm.deliverChatMessage(msg);
+end
+
+function sendTechArmorActivationMessage(nodeChar, nPreviousHP, nNewHP)
+    local sCharName = DB.getValue(nodeChar, "name", "");
+    local nHPGained = nNewHP - nPreviousHP;
+    local sToken = DB.getValue(nodeChar, "token", "");
+    
+    -- Create a message with the defense icon
+    local msg = {
+        font = "msgfont", 
+        icon = "roll_tech_armor",
+        sender = sCharName
+    };
+    
+    msg.text = string.format("[Defense] Tech Armor [%d -> %d] (+%d)", 
+        nPreviousHP, nNewHP, nHPGained);
+    
+    Comm.deliverChatMessage(msg);
 end
