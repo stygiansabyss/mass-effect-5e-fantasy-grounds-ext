@@ -236,6 +236,13 @@
                 </script>
             </label>
             
+            <label name="barrier_ticks_display">
+                <anchored to="barrier_activate_test" position="right" offset="10,0" height="20" width="150">
+                    <left offset="105" />
+                </anchored>
+                <static text="Grants: 0 ticks" />
+            </label>
+            
             <!-- Tech Armor Section -->
             <label_charframetop name="techarmor_title">
                 <anchored to="barrier_activate_test" position="below" offset="0,20">
@@ -296,6 +303,84 @@
                     end
                     function onClickRelease()
                         window.activateTechArmorFromXML();
+                    end
+                </script>
+            </label>
+            
+            <label name="techarmor_hp_display">
+                <anchored to="techarmor_activate_test" position="right" offset="10,0" height="20" width="150">
+                    <left offset="133" />
+                </anchored>
+                <static text="Grants: 0 HP" />
+            </label>
+            
+            <!-- Kinetic Shields Section -->
+            <label_charframetop name="shields_title">
+                <anchored to="techarmor_hp_display" position="below" offset="0,20">
+                    <left offset="-133" />
+                    <right offset="190" />
+                </anchored>
+                <static text="Kinetic Shields" />
+            </label_charframetop>
+            
+            <!-- Shield Stats Display -->
+            <label name="shields_stats_label">
+                <anchored to="shields_title" position="below" width="200" offset="0,10">
+                    <left offset="0" />
+                </anchored>
+                <static text="Shield Stats:" />
+            </label>
+            
+            <label name="shields_max_display">
+                <anchored to="shields_stats_label" position="below" width="150" offset="0,5">
+                    <left offset="0" />
+                </anchored>
+                <static text="Max: 0" />
+            </label>
+            
+            <label name="shields_regen_display">
+                <anchored to="shields_max_display" position="right" width="150" offset="0,5">
+                    <left offset="100" />
+                </anchored>
+                <static text="Regen: 0" />
+            </label>
+            
+            <!-- Shield Controls -->
+            <label name="shields_controls_label">
+                <anchored to="shields_max_display" position="below" width="200" offset="0,15">
+                    <left offset="0" />
+                </anchored>
+                <static text="Shield Controls:" />
+            </label>
+            
+            <label name="shields_add_regen">
+                <anchored to="shields_controls_label" position="below" width="120" height="20" offset="0,10">
+                    <left offset="0" />
+                </anchored>
+                <static text="[Add Regen]" />
+                <tooltip text="Add regeneration amount to current shields" />
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        window.addShieldRegen();
+                    end
+                </script>
+            </label>
+            
+            <label name="shields_set_max">
+                <anchored to="shields_add_regen" position="right" width="120" height="20" offset="0,5">
+                    <left offset="130" />
+                </anchored>
+                <static text="[Set to Max]" />
+                <tooltip text="Set shields to maximum value" />
+                <script>
+                    function onClickDown()
+                        return true;
+                    end
+                    function onClickRelease()
+                        window.setShieldsToMax();
                     end
                 </script>
             </label>
