@@ -5,6 +5,8 @@
   * Allows PCs to add their own Tech Armor
   * Allows PCs to regen or max out their shields
     * Based on values found in inventory
+* Added "Tough Shields" effect
+  * When set, character shields do not take double damage from lightning
 
 # Jan 19 2025
 
