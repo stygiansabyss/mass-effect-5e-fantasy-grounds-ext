@@ -975,6 +975,14 @@ function updateShieldsDisplay()
     local sMaxText = string.format("Max: %d", nMaxShields);
     local sRegenText = string.format("Regen: %d", nRegenAmount);
     
+    -- Check for Router Tech and update stats label
+    local sStatsText = "Shield Stats:";
+    if hasRouterTechFeature(nodeChar) then
+        local nIntBonus = getIntelligenceModifier(nodeChar);
+        sStatsText = string.format("Shield Stats: Router Tech (+%d)", nIntBonus);
+    end
+    
+    self.shields_stats_label.setValue(sStatsText);
     self.shields_max_display.setValue(sMaxText);
     self.shields_regen_display.setValue(sRegenText);
 end
@@ -1014,6 +1022,13 @@ function getShieldValuesFromArmor(nodeChar)
         end
     end
     
+    -- Check for Router Tech feature - adds Intelligence modifier to shields
+    if hasRouterTechFeature(nodeChar) then
+        local nIntModifier = getIntelligenceModifier(nodeChar);
+        nMaxShields = nMaxShields + nIntModifier;
+        nRegenAmount = nRegenAmount + nIntModifier;
+    end
+    
     return nMaxShields, nRegenAmount;
 end
 
@@ -1040,6 +1055,38 @@ function parseArmorModDescription(sDescription)
     
     -- No shield mod found
     return 0, 0; -- max, regen
+end
+
+function hasRouterTechFeature(nodeChar)
+    -- Check if character has the Router Tech feature
+    if not nodeChar then
+        return false;
+    end
+    
+    -- Look for Router Tech in character features/abilities
+    local nodeFeatures = nodeChar.getChild("featurelist");
+    if nodeFeatures then
+        local aFeatures = DB.getChildren(nodeFeatures);
+        for _, nodeFeature in pairs(aFeatures) do
+            local sAbilityName = DB.getValue(nodeFeature, "name", "");
+            if string.lower(sAbilityName) == "router tech" then
+                return true;
+            end
+        end
+    end
+    
+    return false;
+end
+
+function getIntelligenceModifier(nodeChar)
+    -- Get Intelligence modifier from character stats
+    if not nodeChar then
+        return 0;
+    end
+    
+    local nIntModifier = DB.getValue(nodeChar, "abilities.intelligence.bonus", 1);
+    
+    return nIntModifier;
 end
 
 function setShieldsToMax()

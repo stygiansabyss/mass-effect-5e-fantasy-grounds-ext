@@ -496,6 +496,52 @@ function handleTechArmor(rRoll, rSource, rTarget)
     originalMsgOOB.nTotal = remainingDamage;
 end
 
+function hasShieldLightningImmunity(nodeCT)
+    -- Check if character has shields immune to lightning vulnerability
+    -- Look for the specific effect "Tough Shields"
+    if not nodeCT then
+        return false;
+    end
+    
+    -- Check for specific effect name that indicates lightning immunity
+    local nodeEffects = nodeCT.getChild("effects");
+    if nodeEffects then
+        local aEffects = DB.getChildren(nodeEffects);
+        for _, nodeEffect in pairs(aEffects) do
+            local sEffectName = DB.getValue(nodeEffect, "label", "");
+            local sEffectActive = DB.getValue(nodeEffect, "isactive", "");
+            
+            -- Check for "Tough Shields" effect
+            if sEffectActive == 1 and sEffectName == "Tough Shields" then
+                return true;
+            end
+        end
+    end
+    
+    return false;
+end
+
+function applyShieldDamage(nShieldHP, nRollDamage, remainingDamage, nBlocked, nDamageReduction)
+    -- Common shield damage application logic
+    local nNewShieldHP = nShieldHP;
+    local nNewRemainingDamage = remainingDamage;
+    local nNewBlocked = nBlocked;
+    local nNewDamageReduction = nDamageReduction;
+    
+    if nRollDamage >= nShieldHP then
+        nNewRemainingDamage = nNewRemainingDamage - nShieldHP;
+        nNewBlocked = nNewBlocked + nShieldHP;
+        nNewDamageReduction = nNewDamageReduction + nShieldHP;
+    else
+        nNewRemainingDamage = nNewRemainingDamage - nRollDamage;
+        nNewBlocked = nNewBlocked + nRollDamage;
+        nNewDamageReduction = nNewDamageReduction + nRollDamage;
+    end
+    nNewShieldHP = nNewShieldHP - nRollDamage;
+    
+    return nNewShieldHP, nNewRemainingDamage, nNewBlocked, nNewDamageReduction;
+end
+
 function handleShields(rRoll, rSource, rTarget)
     local nDamage = originalMsgOOB.nTotal;
     local nShieldHP = nShields;
@@ -503,6 +549,7 @@ function handleShields(rRoll, rSource, rTarget)
     local sShieldsStatus;
     local nLightningBlocked = 0;
     local remainingDamage = nDamage;
+    local bLightningImmune = hasShieldLightningImmunity(aCTNode);
 
     for sDamageType, sDamageDice, sDamageSubTotal in string.gmatch(rRoll.sDesc, "%[TYPE: ([^(]*) %(([%d%+%-dD]+)%=(%d+)%)%]") do
         local nRollDamage = tonumber(sDamageSubTotal);
@@ -512,39 +559,34 @@ function handleShields(rRoll, rSource, rTarget)
         end
 
         if sDamageType ~= "lightning" and nShieldHP > 0 then
-            if nRollDamage >= nShieldHP then
-                remainingDamage = remainingDamage - nShieldHP;
-                nBlocked = nBlocked + nShieldHP;
-                nDamageReduction = nDamageReduction + nShieldHP;
-            else
-                remainingDamage = remainingDamage - nRollDamage;
-                nBlocked = nBlocked + nRollDamage;
-                nDamageReduction = nDamageReduction + nRollDamage;
-            end
-            nShieldHP = nShieldHP - nRollDamage;
+            -- Normal damage types - apply standard shield damage
+            nShieldHP, remainingDamage, nBlocked, nDamageReduction = applyShieldDamage(nShieldHP, nRollDamage, remainingDamage, nBlocked, nDamageReduction);
+            
         elseif sDamageType == "lightning" and nShieldHP > 0 then
-            -- Lightning does double damage to shields, so we drop them by half.
-            nShieldHP = nShieldHP / 2;
-            nShieldHP = math.floor(nShieldHP+0.49999999999999994);
-
-            if nRollDamage >= nShieldHP then
-                remainingDamage = remainingDamage - nShieldHP;
-                nBlocked = nBlocked + (nShieldHP * 2);
-                nDamageReduction = nDamageReduction + nShieldHP;
-                nLightningBlocked = nShieldHP;
+            if bLightningImmune then
+                -- Shields are immune to lightning vulnerability - treat as normal damage
+                nShieldHP, remainingDamage, nBlocked, nDamageReduction = applyShieldDamage(nShieldHP, nRollDamage, remainingDamage, nBlocked, nDamageReduction);
             else
-                remainingDamage = remainingDamage - nRollDamage;
-                nBlocked = nBlocked + nRollDamage;
-                nDamageReduction = nDamageReduction + nRollDamage;
-                nLightningBlocked = nRollDamage;
+                -- Lightning does double damage to shields - double the effective damage
+                local nEffectiveDamage = nRollDamage * 2;
+                local nHalfShielsHP = math.ceil(nShieldHP / 2);
+                
+                if nEffectiveDamage >= nShieldHP then
+                    -- Lightning destroys all shields
+                    remainingDamage = remainingDamage - nHalfShielsHP;
+                    nBlocked = nBlocked + nShieldHP;
+                    nDamageReduction = nDamageReduction + nHalfShielsHP;
+                    nLightningBlocked = nLightningBlocked + nHalfShielsHP;
+                    nShieldHP = 0;
+                else
+                    -- Lightning partially damages shields
+                    remainingDamage = remainingDamage - nHalfShielsHP;
+                    nBlocked = nBlocked + nEffectiveDamage;
+                    nDamageReduction = nDamageReduction + nHalfShielsHP;
+                    nLightningBlocked = nLightningBlocked + nRollDamage;
+                    nShieldHP = nShieldHP - nEffectiveDamage;
+                end
             end
-            nShieldHP = nShieldHP - nRollDamage;
-
-            -- Set the shields back in case there are other damage types.
-            if nShieldHP > 0 then
-                nShieldHP = nShieldHP * 2;
-            end
-
         end
     end
 
@@ -559,7 +601,7 @@ function handleShields(rRoll, rSource, rTarget)
         sShieldsStatus = "Yes";
     end
 
-    sendShieldMessage(nBlocked, rSource, rTarget, nLightningBlocked);
+    sendShieldMessage(nBlocked, rSource, rTarget, nLightningBlocked, bLightningImmune);
 
     nShields = nShieldHP;
     DB.setValue(aCTNode, "shields", "number", nShieldHP);
@@ -613,10 +655,15 @@ function sendTechArmorMessage(nBlocked, rSource, rTarget, rRoll)
     ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
 end
 
-function sendShieldMessage(nBlocked, rSource, rTarget, nLightningBlocked)
+function sendShieldMessage(nBlocked, rSource, rTarget, nLightningBlocked, bLightningImmune)
     local msg = { font = "msgfont", icon = "roll_shields" };
+    local sTitle = "Kinetic Shields";
 
-    msg.text = string.format("[Defense] %s [%s] -> [from %s]", "Kinetic Shields", nBlocked, rTarget.sName);
+    if bLightningImmune then
+        sTitle = "Lightning Resistant Shields";
+    end
+
+    msg.text = string.format("[Defense] %s [%s] -> [from %s]", sTitle, nBlocked, rTarget.sName);
 
     if nLightningBlocked > 0 then
         msg.text = string.format("%s [Lightning Damage: %s]", msg.text, nLightningBlocked);

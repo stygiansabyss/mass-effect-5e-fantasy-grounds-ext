@@ -1,3 +1,11 @@
+# October 2025
+
+* Added new Defense tab
+  * Allows PCs to add their own Barrier
+  * Allows PCs to add their own Tech Armor
+  * Allows PCs to regen or max out their shields
+    * Based on values found in inventory
+
 # Jan 19 2025
 
 * Added Sub Type as a filter for items
