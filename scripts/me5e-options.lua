@@ -35,4 +35,3 @@ end
 function isVentingEnabled()
     return getHeatHandlingMode() == "venting";
 end
-
