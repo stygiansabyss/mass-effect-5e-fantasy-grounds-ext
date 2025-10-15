@@ -32,6 +32,7 @@
 
         <!-- Main data script -->
         <script name="ME5eCommon" file="scripts/me5e-common.lua" />
+        <script name="ME5eOptions" file="scripts/me5e-options.lua" />
         <script name="ME5eCombat" file="scripts/me5e-combat.lua" />
         <script name="ME5ePartyManager" file="scripts/me5e-ps2.lua" />
         <script name="ME5eCharacterClass" file="scripts/me5e-char-class.lua" />
