@@ -1,4 +1,11 @@
-# October 2025
+# October 15 2025
+
+* Added venting rules
+  * New option in options window for Heat Handling
+  * When venting is selected, weapons will regenerate 1 heat each round they are not fired.
+* Fixed the AoE damage when any of the targets have barrier bug
+
+# October 14 2025
 
 * Added new Defense tab
   * Allows PCs to add their own Barrier
