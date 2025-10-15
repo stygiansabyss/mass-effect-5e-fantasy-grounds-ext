@@ -518,23 +518,24 @@ function handleBarrier(rSource, rTarget, rRoll, msg)
     -- Get the message data from the lookup table
     -- Try multiple approaches to find the right key
     local localMsgOOB = nil;
+    local localCTNode = aCTNode;
     local foundKey = nil;
     
     -- First, try the same approach as rollBarrier
-    local targetNodePath;
+    local sourceNodePath;
     if rSource and rSource.getNodeName then
-        targetNodePath = rSource.getNodeName();
+        sourceNodePath = rSource.getNodeName();
     elseif rSource and rSource.sName then
-        targetNodePath = rSource.sName;
+        sourceNodePath = rSource.sName;
     else
-        targetNodePath = "unknown_target_" .. tostring(rSource);
+        sourceNodePath = "unknown_target_" .. tostring(rSource);
     end
 
-    localMsgOOB = barrierMsgLookup[targetNodePath];
+    localMsgOOB = barrierMsgLookup[sourceNodePath];
     
     -- Defensive check: ensure we have message data
     if not localMsgOOB then
-        Debug.console("ERROR: msgOOB is nil in handleBarrier for target:", targetNodePath);
+        Debug.console("ERROR: msgOOB is nil in handleBarrier for target:", sourceNodePath);
         Debug.console("Available keys in barrierMsgLookup:");
         for k, v in pairs(barrierMsgLookup) do
             Debug.console("  Key:", k, "Value:", v);
@@ -564,14 +565,26 @@ function handleBarrier(rSource, rTarget, rRoll, msg)
         sBarrierStatus = "Yes";
     end
 
+    
+    local sSourceNodeType, nodeSource = ActorManager.getTypeAndNode(rSource);
+    if nodeSource then
+        if sSourceNodeType == "pc" then
+            localCTNode = ActorManager.getCTNode(rSource);
+        else
+            localCTNode = nodeSource;
+        end
+    end
+
+    
+
     nBarrier = nBarrierTicks;
-    DB.setValue(aCTNode, "barrier", "number", nBarrierTicks);
-    DB.setValue(aCTNode, "barrier_status", "string", sBarrierStatus);
+    DB.setValue(localCTNode, "barrier", "number", nBarrierTicks);
+    DB.setValue(localCTNode, "barrier_status", "string", sBarrierStatus);
     localMsgOOB.nTotal = remainingDamage;
 
     checkShields(aSource, aTarget, localMsgOOB);
     
-    barrierMsgLookup[targetNodePath] = nil;
+    barrierMsgLookup[sourceNodePath] = nil;
 end
 
 function handleTechArmor(rRoll, rSource, rTarget)
