@@ -53,6 +53,9 @@ function messageDamage(rSource, rTarget, rRoll)
     aSource = rSource;
     aTarget = rTarget;
 
+    Debug.console("Original damage roll");
+    Debug.console(aDamageRoll);
+
     if rRoll.sType == nil or rRoll.sType ~= "damage" then
         sendBackTo5e();
         return ;
@@ -85,13 +88,13 @@ function messageDamage(rSource, rTarget, rRoll)
     
     local bBypassBarrier = hasWarpAmmoEffect(rSource);
 
-    if bBypassBarrier then
-        handleWarpAmmo(aDamageRoll.nTotal, rTarget, rRoll);
-        checkShields(rSource, rTarget);
-        return ;
-    end
-
     if nBarrier > 0 then
+        if bBypassBarrier then
+            handleWarpAmmo(aDamageRoll.nTotal, rTarget, rRoll);
+            checkShields(rSource, rTarget);
+            return ;
+        end
+
         showBarrierChoiceDialog(rTarget);
     else
         checkShields(rSource, rTarget);
@@ -175,21 +178,18 @@ end
 function showBarrierChoiceDialog(rTarget)    
     -- Get character info to determine if they can choose ticks
     local sTargetNodeType, nodeTarget = ActorManager.getTypeAndNode(rTarget);
-    
 
     local vanguardNode = getVanguardNode(nodeTarget);
     local nDicePerTick = getBarrierDicePerTick(vanguardNode);
     local bCanChooseTicks = canChooseBarrierTicks(vanguardNode);
     local nBarrierDie = getBarrierDie(vanguardNode);
     
-    local nTicksToSpend;
-    
     if bCanChooseTicks then
         -- Level 3+ Vanguards get to choose
         showBarrierInputDialog(rTarget, nBarrier, nDicePerTick, nBarrierDie);
     else
         -- Everyone else automatically uses 1 tick
-        rollBarrier(rTarget, 1, nDicePerTick);
+        rollBarrier(rTarget, 1, nDicePerTick, 8);
     end
 end
 
@@ -382,19 +382,10 @@ function getVanguardNode(nodeTarget)
             if nodeClass then
                 local sClass = DB.getValue(nodeClass, "name", "");
                 
-                -- Check if this is a ME5e class (prioritize Vanguard for barrier mechanics)
                 if sClass == "Vanguard" then
                     return nodeClass;
-                elseif sClass ~= "" and not sFirstClass then
-                    -- Store the first non-empty class as fallback
-                    sFirstClass = nodeClass;
                 end
             end
-        end
-        
-        -- If we found a class but no Vanguard, return the first class
-        if sFirstClass then
-            return sFirstClass;
         end
     end
     
@@ -516,7 +507,7 @@ function handleBarrier(rSource, rTarget, rRoll, msg)
     DB.setValue(aCTNode, "barrier_status", "string", sBarrierStatus);
     originalMsgOOB.nTotal = remainingDamage;
 
-    checkShields(aSource, rTarget);
+    checkShields(aSource, aTarget);
 end
 
 function handleTechArmor(rRoll, rSource, rTarget)
@@ -702,15 +693,21 @@ function sendBarrierMessage(rDamage, rDefenseHP, rTarget, rRoll, nTicksSpent)
     local sDiceNotation = nTotalDice .. "d" .. nBarrierDie;
     
     rMessage.icon = "roll_barrier";
-    rMessage.text = string.format("[Defense] %s [%s=%s] (%d ticks)", "Biotic Barrier", sDiceNotation, nBlocked, nTicksSpent or 1, nBarrierDie);
+    rMessage.text = "[Defense] Biotic Barrier";
+    
+    if nTicksSpent > 1 then
+        rMessage.text = string.format("%s  (%d ticks)", rMessage.text, nTicksSpent);
+    end
 
     Comm.deliverChatMessage(rMessage);
 end
 
 function sendTechArmorMessage(nBlocked, rSource, rTarget, rRoll)
+    Debug.console("Tech Armor Message");
+    Debug.console(rTarget);
     local msg = { font = "msgfont", icon = "roll_tech_armor" };
 
-    msg.text = string.format("[Defense] %s [%s] -> [from %s]", "Tech Armor", nBlocked, rTarget.sName);
+    msg.text = string.format("[Defense] Tech Armor [%s] -> [from %s]", nBlocked, rTarget.sName);
 
     ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
 end
