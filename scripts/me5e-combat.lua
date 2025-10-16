@@ -104,7 +104,7 @@ function messageDamage(rSource, rTarget, rRoll, msgOOB)
 
     sendStartingDamageMessage();
     
-    local bBypassBarrier = hasWarpAmmoEffect(rSource);
+    local bBypassBarrier = hasWarpAmmoEffect(rSource, rRoll);
 
     if nBarrier > 0 then
         if bBypassBarrier then
@@ -530,12 +530,20 @@ function rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie)
     ActionsManager.performAction(nil, rTarget, rRoll);
 end
 
-function hasWarpAmmoEffect(rSource)
-    -- Check if the source has an active effect with "Warp Ammo" text
+function hasWarpAmmoEffect(rSource, rRoll)
+    -- Check if the source has an active effect with "Warp Ammo" text (legacy support)
     if not rSource then
         return false;
     end
     
+    -- First check for weapon-specific Warp Ammo if we have roll data
+    if rRoll and rRoll.sLabel then
+        if hasWarpAmmoWeapon(rSource, rRoll.sLabel) then
+            return true;
+        end
+    end
+    
+    -- Fallback to checking for global Warp Ammo effect (legacy)
     local nodeCT = ActorManager.getCTNode(rSource);
     if not nodeCT then
         return false;
@@ -551,6 +559,45 @@ function hasWarpAmmoEffect(rSource)
         local sEffectName = DB.getValue(nodeEffect, "label", "");
         if string.find(string.lower(sEffectName), "warp ammo") then
             return true;
+        end
+    end
+    
+    return false;
+end
+
+function hasWarpAmmoWeapon(rSource, sWeaponName)
+    -- Check if the specific weapon has Warp Ammo property
+    if not rSource or not sWeaponName then
+        return false;
+    end
+    
+    -- Get the character's weapon list
+    local nodeSource = ActorManager.getCreatureNode(rSource);
+    if not nodeSource then
+        return false;
+    end
+    
+    local nodeWeaponList = nodeSource.getChild("weaponlist");
+    if not nodeWeaponList then
+        return false;
+    end
+    
+    -- Search through weapons for one matching the name
+    local aWeapons = DB.getChildren(nodeWeaponList);
+    
+    for _, nodeWeapon in pairs(aWeapons) do
+        local sWeaponNameFromList = DB.getValue(nodeWeapon, "name", "");
+        if sWeaponNameFromList == sWeaponName then
+            -- Check if this weapon has Warp Ammo enabled (checkbox)
+            local bWarpAmmo = DB.getValue(nodeWeapon, "warpammo", 0) == 1;
+            
+            -- If checkbox not set, check properties text field as fallback
+            if not bWarpAmmo then
+                local sProperties = DB.getValue(nodeWeapon, "properties", "");
+                bWarpAmmo = string.find(string.lower(sProperties), "warp ammo") ~= nil;
+            end
+            
+            return bWarpAmmo;
         end
     end
     
