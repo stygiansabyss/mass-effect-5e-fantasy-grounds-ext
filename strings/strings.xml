@@ -73,7 +73,7 @@
 	<string name="tab_defenses">Defenses</string>
 	
 	<!-- Heat Handling Options -->
-	<string name="me5e_option_header_heat">Mass Effect 5e</string>
+	<string name="me5e_option_header">Mass Effect 5e</string>
 	<string name="me5e_option_heat_handling">Heat Handling</string>
 	<string name="me5e_option_thermal_clips">Thermal Clips</string>
 	<string name="me5e_option_venting">Venting</string>

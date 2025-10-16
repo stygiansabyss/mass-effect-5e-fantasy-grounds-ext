@@ -4,6 +4,8 @@
 --
 
 OOB_MSGTYPE_APPLYDMG = "applydmg";
+OOB_MSGTYPE_BARRIER_CHOICE = "barrier_choice";
+OOB_MSGTYPE_BARRIER_RESPONSE = "barrier_response";
 local originalMsgOOB;
 local originalApplyDamage;
 local originalMessageDamage;
@@ -25,6 +27,8 @@ function onInit()
     ActionsManager.registerResultHandler("barrier_d8", handleBarrier);
 
     OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_APPLYDMG, handleApplyDamage);
+    OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_BARRIER_CHOICE, handleBarrierChoiceRequest);
+    OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_BARRIER_RESPONSE, handleBarrierChoiceResponse);
 
     -- Store this for later.
     originalApplyDamage = ActionDamage.applyDamage;
@@ -226,7 +230,44 @@ end
 
 function showBarrierInputDialog(rTarget, nBarrier, nDicePerTick, nBarrierDie)
     
-    -- Create selection dialog using DialogManager
+    -- Get the character sheet node to determine ownership
+    local sTargetNodeType, nodeTarget = ActorManager.getTypeAndNode(rTarget);
+    local bIsPC = (sTargetNodeType == "pc");
+    
+    if bIsPC then
+        -- For PCs, send OOB message to the specific player
+        local sTargetIdentity = DB.getOwner(nodeTarget);
+        if sTargetIdentity and User.getCurrentIdentity() ~= sTargetIdentity then
+            -- Check if the target user is in the user list (meaning they're connected)
+            local userList = User.getActiveUsers();
+            local bUserConnected = false;
+            for _, user in ipairs(userList) do
+                if user == sTargetIdentity then
+                    bUserConnected = true;
+                    break;
+                end
+            end
+            
+            if bUserConnected then
+                local msgOOB = {
+                    type = OOB_MSGTYPE_BARRIER_CHOICE,
+                    target = nodeTarget.getNodeName(),
+                    barrier = nBarrier,
+                    dicePerTick = nDicePerTick,
+                    barrierDie = nBarrierDie,
+                    message = string.format("How many barrier ticks do you want to spend?\n\nYou have %d barrier ticks available.\nEach tick provides %s damage reduction.", 
+                                           nBarrier, 
+                                           nDicePerTick == 2 and "2d".. nBarrierDie or "1d" .. nBarrierDie)
+                };
+                Comm.deliverOOBMessage(msgOOB, sTargetIdentity);
+                return;
+            end
+            -- If user not connected, fall through to GM dialog
+        end
+        -- If player not connected or no owner, fall through to show to GM
+    end
+    
+    -- For NPCs or if we can't get the player identity, show to GM
     local sMessage = string.format("How many barrier ticks do you want to spend?\n\nYou have %d barrier ticks available.\nEach tick provides %s damage reduction.", 
                                    nBarrier, 
                                    nDicePerTick == 2 and "2d".. nBarrierDie or "1d" .. nBarrierDie);
@@ -546,7 +587,7 @@ function handleBarrier(rSource, rTarget, rRoll, msg)
         for k, v in pairs(barrierMsgLookup) do
             Debug.console("  Key:", k, "Value:", v);
         end
-        Debug.console("Tried keys:", table.concat(possibleKeys, ", "));
+        Debug.console("Tried key:", sourceNodePath);
         return;
     end
     
@@ -591,6 +632,82 @@ function handleBarrier(rSource, rTarget, rRoll, msg)
     checkShields(aSource, aTarget, localMsgOOB);
     
     barrierMsgLookup[sourceNodePath] = nil;
+end
+
+-- Handle barrier choice request from server (client-side)
+function handleBarrierChoiceRequest(msgOOB)
+    local sMessage = msgOOB.message;
+    local nBarrier = msgOOB.barrier;
+    local nDicePerTick = msgOOB.dicePerTick;
+    local nBarrierDie = msgOOB.barrierDie;
+    local sTarget = msgOOB.target;
+    
+    local tOptions = {};
+    -- Add options for each barrier amount from 0 to nBarrier
+    for i = 0, nBarrier do
+        if i == 0 then
+            table.insert(tOptions, { text = "No Barrier (0 ticks)", value = i });
+        elseif i == 1 then
+            table.insert(tOptions, { text = "1 Tick", value = i });
+        else
+            table.insert(tOptions, { text = i .. " Ticks", value = i });
+        end
+    end
+    
+    local tDialogData = {
+        title = "Barrier Defense",
+        msg = sMessage,
+        options = tOptions,
+        callback = function(selection, data)
+            local value = selection[1];
+            local nTicksSpent = 0;
+            
+            if value == "No Barrier (0 ticks)" then
+                nTicksSpent = 0;
+            elseif value == "1 Tick" then
+                nTicksSpent = 1;
+            else
+                local nTicks = tonumber(string.match(value, "(%d+) Ticks"));
+                if nTicks then
+                    nTicksSpent = nTicks;
+                end
+            end
+            
+            -- Send response back to server
+            local msgResponse = {
+                type = OOB_MSGTYPE_BARRIER_RESPONSE,
+                target = sTarget,
+                ticks = nTicksSpent,
+                dicePerTick = nDicePerTick,
+                barrierDie = nBarrierDie
+            };
+            Comm.deliverOOBMessage(msgResponse);
+        end,
+        showmodule = false,
+    };
+    
+    DialogManager.requestSelectionDialog(tDialogData);
+end
+
+-- Handle barrier choice response from client (server-side)
+function handleBarrierChoiceResponse(msgOOB)
+    local sTarget = msgOOB.target;
+    local nTicksSpent = tonumber(msgOOB.ticks);
+    local nDicePerTick = tonumber(msgOOB.dicePerTick);
+    local nBarrierDie = tonumber(msgOOB.barrierDie);
+    
+    local rTarget = ActorManager.resolveActor(sTarget);
+    if not rTarget then
+        return;
+    end
+    
+    if nTicksSpent == 0 then
+        -- No barrier
+        checkShields(aSource, rTarget, originalMsgOOB);
+    else
+        -- Use selected amount
+        rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie);
+    end
 end
 
 function handleTechArmor(rRoll, rSource, rTarget)
