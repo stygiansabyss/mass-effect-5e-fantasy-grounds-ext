@@ -6,6 +6,7 @@
 OOB_MSGTYPE_APPLYDMG = "applydmg";
 OOB_MSGTYPE_BARRIER_CHOICE = "barrier_choice";
 OOB_MSGTYPE_BARRIER_RESPONSE = "barrier_response";
+OOB_MSGTYPE_DEFENSE_UPDATE = "defense_update";
 local originalMsgOOB;
 local originalApplyDamage;
 local originalMessageDamage;
@@ -23,12 +24,14 @@ local barrierMsgLookup = {};
 -- Venting system - track weapon ammo usage per character
 local weaponAmmoTracker = {};
 
+
 function onInit()
     ActionsManager.registerResultHandler("barrier_d8", handleBarrier);
 
     OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_APPLYDMG, handleApplyDamage);
     OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_BARRIER_CHOICE, handleBarrierChoiceRequest);
     OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_BARRIER_RESPONSE, handleBarrierChoiceResponse);
+    OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_DEFENSE_UPDATE, handleDefenseUpdate);
 
     -- Store this for later.
     originalApplyDamage = ActionDamage.applyDamage;
@@ -390,8 +393,25 @@ function activateBarrier(nodeChar, nBarrierTicks)
     local nNewUses = nUses - 1;
     DB.setValue(nodeChar, "barrier_uses", "number", nNewUses);
     
-    -- Set current barrier ticks
+    -- Set current barrier ticks on character sheet
     DB.setValue(nodeChar, "barrier", "number", nBarrierTicks);
+    
+    -- Also update combat tracker if character is in combat
+    local nodeCT = ActorManager.getCTNode(nodeChar);
+    if nodeCT then
+        DB.setValue(nodeCT, "barrier", "number", nBarrierTicks);
+        DB.setValue(nodeCT, "barrier_status", "string", nBarrierTicks > 0 and "Yes" or "No");
+        
+        -- Send OOB message to sync combat tracker updates to all clients
+        local msgOOB = {
+            type = OOB_MSGTYPE_DEFENSE_UPDATE,
+            action = "barrier",
+            target = nodeCT.getNodeName(),
+            value = nBarrierTicks,
+            status = nBarrierTicks > 0 and "Yes" or "No"
+        };
+        Comm.deliverOOBMessage(msgOOB);
+    end
     
     return true;
 end
@@ -417,6 +437,15 @@ function activateTechArmor(nodeChar, nTechArmorHP)
     local nodeCT = ActorManager.getCTNode(nodeChar);
     if nodeCT then
         DB.setValue(nodeCT, "tech_armor_hp", "number", nTechArmorValue);
+        
+        -- Send OOB message to sync combat tracker updates to all clients
+        local msgOOB = {
+            type = OOB_MSGTYPE_DEFENSE_UPDATE,
+            action = "techarmor",
+            target = nodeCT.getNodeName(),
+            value = nTechArmorValue
+        };
+        Comm.deliverOOBMessage(msgOOB);
     end
     
     return true;
@@ -707,6 +736,29 @@ function handleBarrierChoiceResponse(msgOOB)
     else
         -- Use selected amount
         rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie);
+    end
+end
+
+-- Handle defense updates from other clients
+function handleDefenseUpdate(msgOOB)
+    local sAction = msgOOB.action;
+    local sTarget = msgOOB.target;
+    local nValue = tonumber(msgOOB.value);
+    local sStatus = msgOOB.status;
+    
+    -- Find the combat tracker node
+    local nodeCT = DB.findNode(sTarget);
+    if not nodeCT then
+        return;
+    end
+    
+    if sAction == "barrier" then
+        DB.setValue(nodeCT, "barrier", "number", nValue);
+        if sStatus then
+            DB.setValue(nodeCT, "barrier_status", "string", sStatus);
+        end
+    elseif sAction == "techarmor" then
+        DB.setValue(nodeCT, "tech_armor_hp", "number", nValue);
     end
 end
 
