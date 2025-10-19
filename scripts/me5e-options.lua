@@ -11,7 +11,7 @@ function registerME5eOptions()
     -- Heat Handling Option
     OptionsManager.registerOptionData({
         sKey = "ME5E_HEAT_HANDLING",
-        sGroupRes = "me5e_option_header_heat",
+        sGroupRes = "me5e_option_header",
         sNameRes = "me5e_option_heat_handling",
         tCustom = {
             labelsres = "me5e_option_thermal_clips|me5e_option_venting",

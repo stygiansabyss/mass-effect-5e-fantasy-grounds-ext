@@ -4,6 +4,10 @@
   * New option in options window for Heat Handling
   * When venting is selected, weapons will regenerate 1 heat each round they are not fired.
 * Fixed the AoE damage when any of the targets have barrier bug
+* Fixed a bug where players could not set the defenses properly
+* Fixed a bug where the barrier tick choice would only appear for the host
+* Fixed a bug where warp ammo as an effect counted for all damage done
+  * Now you apply it to the weapons properties in the weapon list and it works
 
 # October 14 2025
 

@@ -4,6 +4,9 @@
 --
 
 OOB_MSGTYPE_APPLYDMG = "applydmg";
+OOB_MSGTYPE_BARRIER_CHOICE = "barrier_choice";
+OOB_MSGTYPE_BARRIER_RESPONSE = "barrier_response";
+OOB_MSGTYPE_DEFENSE_UPDATE = "defense_update";
 local originalMsgOOB;
 local originalApplyDamage;
 local originalMessageDamage;
@@ -15,14 +18,20 @@ local nTechArmor = 0;
 local nShields = 0;
 local nDamageReduction = 0;
 local aCTNode;
+-- Store message data for barrier rolls by target node
+local barrierMsgLookup = {};
 
 -- Venting system - track weapon ammo usage per character
 local weaponAmmoTracker = {};
+
 
 function onInit()
     ActionsManager.registerResultHandler("barrier_d8", handleBarrier);
 
     OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_APPLYDMG, handleApplyDamage);
+    OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_BARRIER_CHOICE, handleBarrierChoiceRequest);
+    OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_BARRIER_RESPONSE, handleBarrierChoiceResponse);
+    OOBManager.registerOOBMsgHandler(OOB_MSGTYPE_DEFENSE_UPDATE, handleDefenseUpdate);
 
     -- Store this for later.
     originalApplyDamage = ActionDamage.applyDamage;
@@ -33,43 +42,46 @@ function onInit()
 end
 
 function handleApplyDamage(msgOOB)
-
-    originalMsgOOB = msgOOB;
-    originalMsgOOB.nTotal = tonumber(originalMsgOOB.nTotal);
+    -- Make a local copy of the message to avoid global variable conflicts
+    local localMsgOOB = UtilityManager.copyDeep(msgOOB);
+    localMsgOOB.nTotal = tonumber(localMsgOOB.nTotal);
+    
     Debug.console("Message");
-    Debug.console(msgOOB);
+    Debug.console(localMsgOOB);
 
-    local rSource = ActorManager.resolveActor(msgOOB.sSourceNode);
-    local rTarget = ActorManager.resolveActor(msgOOB.sTargetNode);
+    local rSource = ActorManager.resolveActor(localMsgOOB.sSourceNode);
+    local rTarget = ActorManager.resolveActor(localMsgOOB.sTargetNode);
     if rTarget then
-        rTarget.nOrder = msgOOB.nTargetOrder;
+        rTarget.nOrder = localMsgOOB.nTargetOrder;
     end
 
-    local rRoll = UtilityManager.decodeRollFromOOB(msgOOB);
+    local rRoll = UtilityManager.decodeRollFromOOB(localMsgOOB);
 
-    messageDamage(rSource, rTarget, rRoll);
+    messageDamage(rSource, rTarget, rRoll, localMsgOOB);
 
     --ActionDamage.messageDamage = messageDamage;
-    --ActionDamage.handleApplyDamage(msgOOB);
+    --ActionDamage.handleApplyDamage(localMsgOOB);
 end
 
-function messageDamage(rSource, rTarget, rRoll)
+function messageDamage(rSource, rTarget, rRoll, msgOOB)
     -- Set the global roll to the damage roll.
     aDamageRoll = rRoll;
     aSource = rSource;
     aTarget = rTarget;
+    -- Store the message locally for this target
+    originalMsgOOB = msgOOB;
 
     Debug.console("Original damage roll");
     Debug.console(aDamageRoll);
 
     if rRoll.sType == nil or rRoll.sType ~= "damage" then
-        sendBackTo5e();
+        sendBackTo5e(msgOOB);
         return ;
     end
 
     local sTargetNodeType, nodeTarget = ActorManager.getTypeAndNode(rTarget);
     if not nodeTarget then
-        sendBackTo5e();
+        sendBackTo5e(msgOOB);
         return ;
     end
 
@@ -86,24 +98,24 @@ function messageDamage(rSource, rTarget, rRoll)
         nTechArmor = DB.getValue(nodeTarget, "tech_armor_hp", 0);
         nBarrier = DB.getValue(nodeTarget, "barrier", 0);
     else
-        sendBackTo5e();
+        sendBackTo5e(msgOOB);
         return ;
     end
 
     sendStartingDamageMessage();
     
-    local bBypassBarrier = hasWarpAmmoEffect(rSource);
+    local bBypassBarrier = hasWarpAmmoEffect(rSource, rRoll);
 
     if nBarrier > 0 then
         if bBypassBarrier then
             handleWarpAmmo(aDamageRoll.nTotal, rTarget, rRoll);
-            checkShields(rSource, rTarget);
+            checkShields(rSource, rTarget, msgOOB);
             return ;
         end
 
         showBarrierChoiceDialog(rTarget);
     else
-        checkShields(rSource, rTarget);
+        checkShields(rSource, rTarget, msgOOB);
     end
 end
 
@@ -115,17 +127,26 @@ function removeEffect(sEffect)
     EffectManager5E.removeEffectByType(aCTNode, sEffect);
 end
 
-function checkShields(rSource, rTarget)
-    if nTechArmor > 0 and originalMsgOOB.nTotal > 0 then
+function checkShields(rSource, rTarget, msgOOB)
+    -- Use the passed message or fall back to global
+    local localMsgOOB = msgOOB or originalMsgOOB;
+    
+    -- Defensive check: ensure localMsgOOB is not nil
+    if not localMsgOOB then
+        Debug.console("ERROR: msgOOB is nil in checkShields");
+        return;
+    end
+    
+    if nTechArmor > 0 and localMsgOOB.nTotal > 0 then
         handleTechArmor(aDamageRoll, rSource, rTarget);
     end
 
     -- Shields do not work on melee damage.
-    if nShields > 0 and originalMsgOOB.nTotal > 0 and originalMsgOOB.range ~= "M" then
+    if nShields > 0 and localMsgOOB.nTotal > 0 and localMsgOOB.range ~= "M" then
         handleShields(aDamageRoll, rSource, rTarget);
     end
 
-    if originalMsgOOB.nTotal == 0 then
+    if localMsgOOB.nTotal == 0 then
         Debug.console("All damage removed by defenses");
         sendNoDamageMessage();
 
@@ -134,26 +155,37 @@ function checkShields(rSource, rTarget)
 
     local remainingDamage = tostring(aDamageRoll.nTotal);
 
-    if originalMsgOOB.nTotal ~= remainingDamage then
-        sendRemainingDamageMessage();
+    if localMsgOOB.nTotal ~= remainingDamage then
+        sendRemainingDamageMessage(localMsgOOB);
         --fixOriginalMsg(remainingDamage);
     end
 
-    sendBackTo5e();
+    sendBackTo5e(localMsgOOB);
 end
 
-function sendBackTo5e()
+function sendBackTo5e(msgOOB)
+    -- Use the passed message or fall back to global
+    local localMsgOOB = msgOOB or originalMsgOOB;
+    
+    -- Defensive check: ensure localMsgOOB is not nil
+    if not localMsgOOB then
+        Debug.console("ERROR: msgOOB is nil in sendBackTo5e");
+        return;
+    end
+    
     --ActionDamage.messageDamage = originalMessageDamage;
     --ActionDamage.messageDamage(aSource, aTarget, aDamageRoll);
-    originalMsgOOB.nTotal = tostring(originalMsgOOB.nTotal);
+    localMsgOOB.nTotal = tostring(localMsgOOB.nTotal);
     Debug.console("Message");
-    Debug.console(originalMsgOOB);
-    ActionDamage.handleApplyDamage(originalMsgOOB);
+    Debug.console(localMsgOOB);
+    ActionDamage.handleApplyDamage(localMsgOOB);
 
     aCTNode = nil;
+    -- Reset global variables for this target
     originalMsgOOB = nil;
     nDamageReduction = 0;
 end
+
 
 --
 -- This function is used to stop the Total mismatch damage message.
@@ -201,7 +233,44 @@ end
 
 function showBarrierInputDialog(rTarget, nBarrier, nDicePerTick, nBarrierDie)
     
-    -- Create selection dialog using DialogManager
+    -- Get the character sheet node to determine ownership
+    local sTargetNodeType, nodeTarget = ActorManager.getTypeAndNode(rTarget);
+    local bIsPC = (sTargetNodeType == "pc");
+    
+    if bIsPC then
+        -- For PCs, send OOB message to the specific player
+        local sTargetIdentity = DB.getOwner(nodeTarget);
+        if sTargetIdentity and User.getCurrentIdentity() ~= sTargetIdentity then
+            -- Check if the target user is in the user list (meaning they're connected)
+            local userList = User.getActiveUsers();
+            local bUserConnected = false;
+            for _, user in ipairs(userList) do
+                if user == sTargetIdentity then
+                    bUserConnected = true;
+                    break;
+                end
+            end
+            
+            if bUserConnected then
+                local msgOOB = {
+                    type = OOB_MSGTYPE_BARRIER_CHOICE,
+                    target = nodeTarget.getNodeName(),
+                    barrier = nBarrier,
+                    dicePerTick = nDicePerTick,
+                    barrierDie = nBarrierDie,
+                    message = string.format("How many barrier ticks do you want to spend?\n\nYou have %d barrier ticks available.\nEach tick provides %s damage reduction.", 
+                                           nBarrier, 
+                                           nDicePerTick == 2 and "2d".. nBarrierDie or "1d" .. nBarrierDie)
+                };
+                Comm.deliverOOBMessage(msgOOB, sTargetIdentity);
+                return;
+            end
+            -- If user not connected, fall through to GM dialog
+        end
+        -- If player not connected or no owner, fall through to show to GM
+    end
+    
+    -- For NPCs or if we can't get the player identity, show to GM
     local sMessage = string.format("How many barrier ticks do you want to spend?\n\nYou have %d barrier ticks available.\nEach tick provides %s damage reduction.", 
                                    nBarrier, 
                                    nDicePerTick == 2 and "2d".. nBarrierDie or "1d" .. nBarrierDie);
@@ -251,7 +320,7 @@ function handleBarrierSelection(selection, data, rTarget, nBarrier, nDicePerTick
     
     if nTicksSpent == 0 then
         -- No barrier
-        checkShields(aSource, rTarget);
+        checkShields(aSource, rTarget, originalMsgOOB);
     else
         -- Use selected amount
         rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie);
@@ -324,8 +393,25 @@ function activateBarrier(nodeChar, nBarrierTicks)
     local nNewUses = nUses - 1;
     DB.setValue(nodeChar, "barrier_uses", "number", nNewUses);
     
-    -- Set current barrier ticks
+    -- Set current barrier ticks on character sheet
     DB.setValue(nodeChar, "barrier", "number", nBarrierTicks);
+    
+    -- Also update combat tracker if character is in combat
+    local nodeCT = ActorManager.getCTNode(nodeChar);
+    if nodeCT then
+        DB.setValue(nodeCT, "barrier", "number", nBarrierTicks);
+        DB.setValue(nodeCT, "barrier_status", "string", nBarrierTicks > 0 and "Yes" or "No");
+        
+        -- Send OOB message to sync combat tracker updates to all clients
+        local msgOOB = {
+            type = OOB_MSGTYPE_DEFENSE_UPDATE,
+            action = "barrier",
+            target = nodeCT.getNodeName(),
+            value = nBarrierTicks,
+            status = nBarrierTicks > 0 and "Yes" or "No"
+        };
+        Comm.deliverOOBMessage(msgOOB);
+    end
     
     return true;
 end
@@ -351,6 +437,15 @@ function activateTechArmor(nodeChar, nTechArmorHP)
     local nodeCT = ActorManager.getCTNode(nodeChar);
     if nodeCT then
         DB.setValue(nodeCT, "tech_armor_hp", "number", nTechArmorValue);
+        
+        -- Send OOB message to sync combat tracker updates to all clients
+        local msgOOB = {
+            type = OOB_MSGTYPE_DEFENSE_UPDATE,
+            action = "techarmor",
+            target = nodeCT.getNodeName(),
+            value = nTechArmorValue
+        };
+        Comm.deliverOOBMessage(msgOOB);
     end
     
     return true;
@@ -401,13 +496,25 @@ end
 function rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie)
     
     if nTicksSpent <= 0 then
-        checkShields(aSource, rTarget);
+        checkShields(aSource, rTarget, originalMsgOOB);
         return;
     end
     
     -- Calculate total dice to roll
     local nTotalDice = nTicksSpent * nDicePerTick;
     local sDiceNotation = nTotalDice .. "d" .. nBarrierDie;
+    
+    -- Store the message data for this target
+    local targetNodePath;
+    if rTarget and rTarget.getNodeName then
+        targetNodePath = rTarget.getNodeName();
+    elseif rTarget and rTarget.sName then
+        targetNodePath = rTarget.sName;
+    else
+        targetNodePath = "unknown_target_" .. tostring(rTarget);
+    end
+    
+    barrierMsgLookup[targetNodePath] = UtilityManager.copyDeep(originalMsgOOB);
     
     -- Create the roll
     local rRoll = { 
@@ -420,15 +527,23 @@ function rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie)
         nBarrierDie = nBarrierDie
     };
     
-    ActionsManager.performAction(nil, aTarget, rRoll);
+    ActionsManager.performAction(nil, rTarget, rRoll);
 end
 
-function hasWarpAmmoEffect(rSource)
-    -- Check if the source has an active effect with "Warp Ammo" text
+function hasWarpAmmoEffect(rSource, rRoll)
+    -- Check if the source has an active effect with "Warp Ammo" text (legacy support)
     if not rSource then
         return false;
     end
     
+    -- First check for weapon-specific Warp Ammo if we have roll data
+    if rRoll and rRoll.sLabel then
+        if hasWarpAmmoWeapon(rSource, rRoll.sLabel) then
+            return true;
+        end
+    end
+    
+    -- Fallback to checking for global Warp Ammo effect (legacy)
     local nodeCT = ActorManager.getCTNode(rSource);
     if not nodeCT then
         return false;
@@ -444,6 +559,45 @@ function hasWarpAmmoEffect(rSource)
         local sEffectName = DB.getValue(nodeEffect, "label", "");
         if string.find(string.lower(sEffectName), "warp ammo") then
             return true;
+        end
+    end
+    
+    return false;
+end
+
+function hasWarpAmmoWeapon(rSource, sWeaponName)
+    -- Check if the specific weapon has Warp Ammo property
+    if not rSource or not sWeaponName then
+        return false;
+    end
+    
+    -- Get the character's weapon list
+    local nodeSource = ActorManager.getCreatureNode(rSource);
+    if not nodeSource then
+        return false;
+    end
+    
+    local nodeWeaponList = nodeSource.getChild("weaponlist");
+    if not nodeWeaponList then
+        return false;
+    end
+    
+    -- Search through weapons for one matching the name
+    local aWeapons = DB.getChildren(nodeWeaponList);
+    
+    for _, nodeWeapon in pairs(aWeapons) do
+        local sWeaponNameFromList = DB.getValue(nodeWeapon, "name", "");
+        if sWeaponNameFromList == sWeaponName then
+            -- Check if this weapon has Warp Ammo enabled (checkbox)
+            local bWarpAmmo = DB.getValue(nodeWeapon, "warpammo", 0) == 1;
+            
+            -- If checkbox not set, check properties text field as fallback
+            if not bWarpAmmo then
+                local sProperties = DB.getValue(nodeWeapon, "properties", "");
+                bWarpAmmo = string.find(string.lower(sProperties), "warp ammo") ~= nil;
+            end
+            
+            return bWarpAmmo;
         end
     end
     
@@ -484,10 +638,36 @@ function sendWarpAmmoBarrierMessage(nDamage, rSource, rRoll, nTicksSpent)
 end
 
 function handleBarrier(rSource, rTarget, rRoll, msg)
-    Debug.console(originalMsgOOB);
-    Debug.console(msg);
+    -- Get the message data from the lookup table
+    -- Try multiple approaches to find the right key
+    local localMsgOOB = nil;
+    local localCTNode = aCTNode;
+    local foundKey = nil;
     
-    local nDamage = originalMsgOOB.nTotal;
+    -- First, try the same approach as rollBarrier
+    local sourceNodePath;
+    if rSource and rSource.getNodeName then
+        sourceNodePath = rSource.getNodeName();
+    elseif rSource and rSource.sName then
+        sourceNodePath = rSource.sName;
+    else
+        sourceNodePath = "unknown_target_" .. tostring(rSource);
+    end
+
+    localMsgOOB = barrierMsgLookup[sourceNodePath];
+    
+    -- Defensive check: ensure we have message data
+    if not localMsgOOB then
+        Debug.console("ERROR: msgOOB is nil in handleBarrier for target:", sourceNodePath);
+        Debug.console("Available keys in barrierMsgLookup:");
+        for k, v in pairs(barrierMsgLookup) do
+            Debug.console("  Key:", k, "Value:", v);
+        end
+        Debug.console("Tried key:", sourceNodePath);
+        return;
+    end
+    
+    local nDamage = localMsgOOB.nTotal;
     local nBarrierHp = rRoll.nTotal;
     local nTicksSpent = rRoll.nTicksSpent or 1; -- Fallback for old rolls
     local nBarrierTicks = nBarrier - nTicksSpent;
@@ -508,12 +688,125 @@ function handleBarrier(rSource, rTarget, rRoll, msg)
         sBarrierStatus = "Yes";
     end
 
-    nBarrier = nBarrierTicks;
-    DB.setValue(aCTNode, "barrier", "number", nBarrierTicks);
-    DB.setValue(aCTNode, "barrier_status", "string", sBarrierStatus);
-    originalMsgOOB.nTotal = remainingDamage;
+    
+    local sSourceNodeType, nodeSource = ActorManager.getTypeAndNode(rSource);
+    if nodeSource then
+        if sSourceNodeType == "pc" then
+            localCTNode = ActorManager.getCTNode(rSource);
+        else
+            localCTNode = nodeSource;
+        end
+    end
 
-    checkShields(aSource, aTarget);
+    
+
+    nBarrier = nBarrierTicks;
+    DB.setValue(localCTNode, "barrier", "number", nBarrierTicks);
+    DB.setValue(localCTNode, "barrier_status", "string", sBarrierStatus);
+    localMsgOOB.nTotal = remainingDamage;
+
+    checkShields(aSource, aTarget, localMsgOOB);
+    
+    barrierMsgLookup[sourceNodePath] = nil;
+end
+
+-- Handle barrier choice request from server (client-side)
+function handleBarrierChoiceRequest(msgOOB)
+    local sMessage = msgOOB.message;
+    local nBarrier = msgOOB.barrier;
+    local nDicePerTick = msgOOB.dicePerTick;
+    local nBarrierDie = msgOOB.barrierDie;
+    local sTarget = msgOOB.target;
+    
+    local tOptions = {};
+    -- Add options for each barrier amount from 0 to nBarrier
+    for i = 0, nBarrier do
+        if i == 0 then
+            table.insert(tOptions, { text = "No Barrier (0 ticks)", value = i });
+        elseif i == 1 then
+            table.insert(tOptions, { text = "1 Tick", value = i });
+        else
+            table.insert(tOptions, { text = i .. " Ticks", value = i });
+        end
+    end
+    
+    local tDialogData = {
+        title = "Barrier Defense",
+        msg = sMessage,
+        options = tOptions,
+        callback = function(selection, data)
+            local value = selection[1];
+            local nTicksSpent = 0;
+            
+            if value == "No Barrier (0 ticks)" then
+                nTicksSpent = 0;
+            elseif value == "1 Tick" then
+                nTicksSpent = 1;
+            else
+                local nTicks = tonumber(string.match(value, "(%d+) Ticks"));
+                if nTicks then
+                    nTicksSpent = nTicks;
+                end
+            end
+            
+            -- Send response back to server
+            local msgResponse = {
+                type = OOB_MSGTYPE_BARRIER_RESPONSE,
+                target = sTarget,
+                ticks = nTicksSpent,
+                dicePerTick = nDicePerTick,
+                barrierDie = nBarrierDie
+            };
+            Comm.deliverOOBMessage(msgResponse);
+        end,
+        showmodule = false,
+    };
+    
+    DialogManager.requestSelectionDialog(tDialogData);
+end
+
+-- Handle barrier choice response from client (server-side)
+function handleBarrierChoiceResponse(msgOOB)
+    local sTarget = msgOOB.target;
+    local nTicksSpent = tonumber(msgOOB.ticks);
+    local nDicePerTick = tonumber(msgOOB.dicePerTick);
+    local nBarrierDie = tonumber(msgOOB.barrierDie);
+    
+    local rTarget = ActorManager.resolveActor(sTarget);
+    if not rTarget then
+        return;
+    end
+    
+    if nTicksSpent == 0 then
+        -- No barrier
+        checkShields(aSource, rTarget, originalMsgOOB);
+    else
+        -- Use selected amount
+        rollBarrier(rTarget, nTicksSpent, nDicePerTick, nBarrierDie);
+    end
+end
+
+-- Handle defense updates from other clients
+function handleDefenseUpdate(msgOOB)
+    local sAction = msgOOB.action;
+    local sTarget = msgOOB.target;
+    local nValue = tonumber(msgOOB.value);
+    local sStatus = msgOOB.status;
+    
+    -- Find the combat tracker node
+    local nodeCT = DB.findNode(sTarget);
+    if not nodeCT then
+        return;
+    end
+    
+    if sAction == "barrier" then
+        DB.setValue(nodeCT, "barrier", "number", nValue);
+        if sStatus then
+            DB.setValue(nodeCT, "barrier_status", "string", sStatus);
+        end
+    elseif sAction == "techarmor" then
+        DB.setValue(nodeCT, "tech_armor_hp", "number", nValue);
+    end
 end
 
 function handleTechArmor(rRoll, rSource, rTarget)
@@ -753,10 +1046,10 @@ function sendStartingDamageMessage()
     ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
 end
 
-function sendRemainingDamageMessage()
+function sendRemainingDamageMessage(localMsgOOB)
     local msg = { font = "msgfont" };
 
-    msg.text = string.format("Remaining damage: %s", originalMsgOOB.nTotal);
+    msg.text = string.format("Remaining damage: %s", localMsgOOB.nTotal);
 
     ActionsManager.outputResult(aDamageRoll.bSecret, rSource, rTarget, msg, msg);
 end

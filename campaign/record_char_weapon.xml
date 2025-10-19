@@ -19,4 +19,27 @@
             </basicnumber>
         </sheetdata>
     </windowclass>
+    
+    <!-- Add Warp Ammo property to weapon editor -->
+    <windowclass name="char_weapon_editor_main" merge="join">
+        <sheetdata>
+            <button_checkbox name="warpammo">
+                <anchored to="properties" position="below" offset="0,5" width="20" height="20">
+                    <left offset="0" />
+                </anchored>
+                <tooltip text="Warp Ammo - Bypasses barrier defense" />
+                <script>
+                    function onValueChanged()
+                        -- Warp Ammo checkbox changed
+                    end
+                </script>
+            </button_checkbox>
+            <label name="warpammo_label">
+                <anchored to="warpammo" position="righthigh" offset="5,0">
+                    <left offset="25" />
+                </anchored>
+                <static text="Warp Ammo" />
+            </label>
+        </sheetdata>
+    </windowclass>
 </root>
