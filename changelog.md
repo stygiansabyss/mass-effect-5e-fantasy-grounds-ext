@@ -1,3 +1,8 @@
+# Octover 19 2025
+
+- Fixed a bug where players could not add shields to combat tracker
+- Added "primed" understanding to NPC sheets
+
 # October 15 2025
 
 * Added venting rules

@@ -806,6 +806,8 @@ function handleDefenseUpdate(msgOOB)
         end
     elseif sAction == "techarmor" then
         DB.setValue(nodeCT, "tech_armor_hp", "number", nValue);
+    elseif sAction == "shields" then
+        DB.setValue(nodeCT, "shields", "number", nValue);
     end
 end
 

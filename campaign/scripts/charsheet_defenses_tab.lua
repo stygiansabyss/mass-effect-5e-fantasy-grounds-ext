@@ -3,6 +3,9 @@
 -- Handles Barrier and Tech Armor activation
 --
 
+-- OOB message type for defense updates
+OOB_MSGTYPE_DEFENSE_UPDATE = "defense_update";
+
 -- Global function declarations
 onBarrierActivate = nil;
 activateBarrierFromXML = nil;
@@ -1089,6 +1092,24 @@ function getIntelligenceModifier(nodeChar)
     return nIntModifier;
 end
 
+regenShielsFromXML = function()
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
+        return;
+    end
+    
+    addShieldRegen();
+end
+
+setShieldsToMaxFromXML = function()
+    local nodeChar = getDatabaseNode();
+    if not nodeChar then
+        return;
+    end
+    
+    setShieldsToMax();
+end
+
 function setShieldsToMax()
     local nodeChar = getDatabaseNode();
     if not nodeChar then
@@ -1117,6 +1138,15 @@ function setShieldsToMax()
         end
         
         DB.setValue(nodeCT, "shields", "number", nMaxShields);
+        
+        -- Send OOB message to sync combat tracker updates to all clients
+        local msgOOB = {
+            type = OOB_MSGTYPE_DEFENSE_UPDATE,
+            action = "shields",
+            target = nodeCT.getNodeName(),
+            value = nMaxShields
+        };
+        Comm.deliverOOBMessage(msgOOB);
         
         sendShieldUpdateMessage(nodeChar, nCurrentShields, nMaxShields);
     else
@@ -1154,6 +1184,15 @@ function addShieldRegen()
         local nNewShields = math.min(nCurrentShields + nRegenAmount, nMaxShields);
         
         DB.setValue(nodeCT, "shields", "number", nNewShields);
+        
+        -- Send OOB message to sync combat tracker updates to all clients
+        local msgOOB = {
+            type = OOB_MSGTYPE_DEFENSE_UPDATE,
+            action = "shields",
+            target = nodeCT.getNodeName(),
+            value = nNewShields
+        };
+        Comm.deliverOOBMessage(msgOOB);
         
         sendShieldUpdateMessage(nodeChar, nCurrentShields, nNewShields);
     else

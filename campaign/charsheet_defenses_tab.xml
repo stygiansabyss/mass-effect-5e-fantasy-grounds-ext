@@ -101,7 +101,7 @@
                         return true;
                     end
                     function onClickRelease()
-                        window.addShieldRegen();
+                        window.regenShielsFromXML();
                     end
                 </script>
             </label>
@@ -117,7 +117,7 @@
                         return true;
                     end
                     function onClickRelease()
-                        window.setShieldsToMax();
+                        window.setShieldsToMaxFromXML();
                     end
                 </script>
             </label>

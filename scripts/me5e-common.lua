@@ -46,6 +46,17 @@ function onInit()
         "lifted",
         "paralyzed",
         "poisoned",
+        "primed cold",
+        "primed fire",
+        "primed force",
+        "primed lightning",
+        "primed necrotic",
+        "primed radiant",
+        "primed: cold",
+        "primed: fire",
+        "primed: force",
+        "primed: lightning",
+        "primed: necrotic",
         "primed: radiant",
         "prone",
         "restrained",
@@ -67,7 +78,24 @@ function onInit()
         ["invisible"] = "cond_invisible",
         ["lifted"] = "cond_lifted",
         ["paralyzed"] = "cond_paralyzed",
-        ["pradiant"] = "cond_dazed",
+        ["primed cold"] = "Primed: Cold",
+        ["primed fire"] = "Primed: Fire", 
+        ["primed force"] = "Primed: Force",
+        ["primed lightning"] = "Primed: Lightning",
+        ["primed necrotic"] = "Primed: Necrotic",
+        ["primed radiant"] = "Primed: Radiant",
+        ["primed: cold"] = "cond_dazed",
+        ["primed: fire"] = "cond_dazed",
+        ["primed: force"] = "cond_dazed",
+        ["primed: lightning"] = "cond_dazed",
+        ["primed: necrotic"] = "cond_dazed",
+        ["primed: radiant"] = "cond_dazed",
+        ["Primed: Cold"] = "cond_dazed",
+        ["Primed: Fire"] = "cond_dazed",
+        ["Primed: Force"] = "cond_dazed", 
+        ["Primed: Lightning"] = "cond_dazed",
+        ["Primed: Necrotic"] = "cond_dazed",
+        ["Primed: Radiant"] = "cond_dazed",
         ["prone"] = "cond_prone",
         ["restrained"] = "cond_restrained",
         ["stunned"] = "cond_stunned",
@@ -196,6 +224,18 @@ function onInit()
     table.insert(conditions, "lifted");
     table.insert(conditions, "indoctrinated");
     table.insert(conditions, "targeting");
+    table.insert(conditions, "primed cold");
+    table.insert(conditions, "primed fire");
+    table.insert(conditions, "primed force");
+    table.insert(conditions, "primed lightning");
+    table.insert(conditions, "primed necrotic");
+    table.insert(conditions, "primed radiant");
+    table.insert(conditions, "primed: cold");
+    table.insert(conditions, "primed: fire");
+    table.insert(conditions, "primed: force");
+    table.insert(conditions, "primed: lightning");
+    table.insert(conditions, "primed: necrotic");
+    table.insert(conditions, "primed: radiant");
 
     -- "Push" data changes in this file to the packages - overwriting the original base data.
     DataCommon.skilldata = skilldata;
