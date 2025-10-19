@@ -6,37 +6,22 @@
 local originalParseEffects = nil;
 
 function onInit()
-    Debug.console("ME5ePowers: Script initialized");
-    Debug.console("ME5ePowers: Checking available globals...");
-    Debug.console("ME5ePowers: parseEffects exists: " .. tostring(parseEffects ~= nil));
-    Debug.console("ME5ePowers: PowerManager exists: " .. tostring(PowerManager ~= nil));
-    Debug.console("ME5ePowers: TimerManager exists: " .. tostring(TimerManager ~= nil));
-    
     -- Try to override the global parseEffects function directly
     -- Following the pattern from me5e-ps2.lua and me5e-combat.lua
     setupPowerOverrides();
 end
 
 function setupPowerOverrides()
-    Debug.console("ME5ePowers: Setting up power parsing overrides");
-    Debug.console("ME5ePowers: Checking if parseEffects exists: " .. tostring(parseEffects ~= nil));
-    
     -- Check if parseEffects function exists in global scope
     if parseEffects then
-        Debug.console("ME5ePowers: Found parseEffects function, overriding...");
         originalParseEffects = parseEffects;
         parseEffects = parseEffectsWithPrimed;
-        Debug.console("ME5ePowers: parseEffects overridden successfully");
         return true;
     else
-        Debug.console("ME5ePowers: parseEffects function not found yet");
-        
         -- Try alternative approaches - maybe it's in a different namespace
         if PowerManager and PowerManager.parseEffects then
-            Debug.console("ME5ePowers: Found PowerManager.parseEffects, overriding...");
             originalParseEffects = PowerManager.parseEffects;
             PowerManager.parseEffects = parseEffectsWithPrimed;
-            Debug.console("ME5ePowers: PowerManager.parseEffects overridden successfully");
             return true;
         end
         
@@ -47,8 +32,6 @@ function setupPowerOverrides()
 end
 
 function setupRetryMechanism()
-    Debug.console("ME5ePowers: Setting up retry mechanism");
-    
     -- Create a retry counter
     local retryCount = 0;
     local maxRetries = 10;
@@ -56,22 +39,16 @@ function setupRetryMechanism()
     -- Try immediate retry first
     local function tryRetry()
         retryCount = retryCount + 1;
-        Debug.console("ME5ePowers: Retry attempt #" .. retryCount);
         
         if parseEffects then
-            Debug.console("ME5ePowers: Found parseEffects on retry #" .. retryCount);
             originalParseEffects = parseEffects;
             parseEffects = parseEffectsWithPrimed;
-            Debug.console("ME5ePowers: parseEffects overridden successfully on retry");
             return true;
         elseif retryCount < maxRetries then
-            Debug.console("ME5ePowers: parseEffects still not found, will retry again");
             -- Register another retry
             if TimerManager then
                 TimerManager.registerCallback(tryRetry, 500); -- Try every 500ms
             end
-        else
-            Debug.console("ME5ePowers: Max retries reached, giving up on automatic override");
         end
         return false;
     end
@@ -83,14 +60,10 @@ function setupRetryMechanism()
 end
 
 function parseEffectsWithPrimed(sPowerName, aWords)
-    Debug.console("ME5ePowers: parseEffectsWithPrimed called for: " .. (sPowerName or "unknown"));
-    
     -- Call the original function first to handle normal condition parsing
     local effects = {};
     if originalParseEffects then
         effects = originalParseEffects(sPowerName, aWords);
-    else
-        Debug.console("ME5ePowers: originalParseEffects not available, skipping original parsing");
     end
     
     -- Look for primed conditions in the text
@@ -101,6 +74,7 @@ end
 
 
 function parsePrimedConditions(aWords, effects)
+    
     -- Look for primed conditions that might not have been caught by the original parser
     for i = 1, #aWords do
         if StringManager.isWord(aWords[i], "primed") and i < #aWords then
@@ -127,21 +101,38 @@ function parsePrimedConditions(aWords, effects)
                 end
                 
                 if bValidCondition then
+                    -- Use the space format that maps to proper condition names in condcomps
+                    local conditionKey = "primed " .. string.lower(nextWord);
+                    local displayName = conditionKey; -- Default to the key name
+                    
+                    -- Get the proper display name from condcomps table
+                    if DataCommon and DataCommon.condcomps and DataCommon.condcomps[conditionKey] then
+                        displayName = DataCommon.condcomps[conditionKey];
+                    end
+                    
                     local effect = {};
-                    effect.sName = "Primed: " .. StringManager.capitalize(nextWord);
+                    effect.sName = displayName; -- Use the properly formatted display name
                     effect.startindex = nConditionStart;
                     effect.endindex = i + 1;
                     
-                    -- Check if we already have this effect to avoid duplicates
-                    local bDuplicate = false;
-                    for _, existingEffect in ipairs(effects) do
-                        if existingEffect.sName == effect.sName then
-                            bDuplicate = true;
-                            break;
+                    -- Use PowerManager.parseEffectsAdd to properly process the effect
+                    -- This ensures it gets the correct properties for applying to targets
+                    if PowerManager and PowerManager.parseEffectsAdd then
+                        PowerManager.parseEffectsAdd(aWords, i, effect, effects);
+                        
+                        -- Check if the effect was added and ensure it has the right properties for database storage
+                        local lastEffect = effects[#effects];
+                        if lastEffect and (lastEffect.sName == displayName or string.find(lastEffect.sName, conditionKey)) then
+                            -- Try to prevent [EACH] from appearing in display by removing targeting property
+                            if lastEffect.sTargeting == "each" then
+                                lastEffect.sTargeting = nil;
+                            end
+                            if not lastEffect.sApply then
+                                lastEffect.sApply = "";
+                            end
                         end
-                    end
-                    
-                    if not bDuplicate then
+                    else
+                        -- Fallback: manually add the effect if PowerManager isn't available
                         table.insert(effects, effect);
                     end
                 end
@@ -171,6 +162,5 @@ end
 
 -- Simple manual retry function for testing
 function ME5eRetryInit()
-    Debug.console("ME5ePowers: Manual retry requested");
     setupPowerOverrides();
 end
