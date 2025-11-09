@@ -1,7 +1,12 @@
-# Octover 19 2025
+# November 9 2025
+
+- Moved venting to its own class.
+
+# October 19 2025
 
 - Fixed a bug where players could not add shields to combat tracker
 - Added "primed" understanding to NPC sheets
+  - You can now click on "target is primed ELEMENT"
 
 # October 15 2025
 

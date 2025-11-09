@@ -33,6 +33,9 @@
         <!-- Main data script -->
         <script name="ME5eCommon" file="scripts/me5e-common.lua" />
         <script name="ME5eOptions" file="scripts/me5e-options.lua" />
+        <script name="ME5eClassHelper" file="scripts/Helpers/class-helper.lua" />
+        <script name="ME5eVenting" file="scripts/Ammo/venting.lua" />
+        <script name="ME5eBarrier" file="scripts/defenses/barrier.lua" />
         <script name="ME5eCombat" file="scripts/me5e-combat.lua" />
         <script name="ME5ePowers" file="scripts/me5e-powers.lua" />
         <script name="ME5ePartyManager" file="scripts/me5e-ps2.lua" />
