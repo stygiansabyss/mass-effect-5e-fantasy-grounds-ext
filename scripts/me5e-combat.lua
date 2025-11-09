@@ -20,6 +20,21 @@ local nDamageReduction = 0;
 local aCTNode;
 -- Store message data for barrier rolls by target node
 local barrierMsgLookup = {};
+local function normalizeWeaponName(sValue)
+    if not sValue or sValue == "" then
+        return "";
+    end
+    
+    local sNormalized = sValue:lower();
+    sNormalized = sNormalized:gsub("%b[]", " ");
+    sNormalized = sNormalized:gsub("%b()", " ");
+    sNormalized = sNormalized:gsub("[^%w%s]", " ");
+    sNormalized = sNormalized:gsub("%s+", " ");
+    sNormalized = sNormalized:gsub("^%s+", "");
+    sNormalized = sNormalized:gsub("%s+$", "");
+    
+    return sNormalized;
+end
 
 function onInit()
     ActionsManager.registerResultHandler("barrier_d8", handleBarrier);
@@ -582,10 +597,13 @@ function hasWarpAmmoWeapon(rSource, sWeaponName)
     
     -- Search through weapons for one matching the name
     local aWeapons = DB.getChildren(nodeWeaponList);
+    local sRollWeaponName = normalizeWeaponName(sWeaponName);
     
     for _, nodeWeapon in pairs(aWeapons) do
         local sWeaponNameFromList = DB.getValue(nodeWeapon, "name", "");
-        if sWeaponNameFromList == sWeaponName then
+        local sNormalizedListName = normalizeWeaponName(sWeaponNameFromList);
+        
+        if sNormalizedListName ~= "" and sRollWeaponName ~= "" and (sRollWeaponName == sNormalizedListName or sRollWeaponName:find(sNormalizedListName, 1, true) or sNormalizedListName:find(sRollWeaponName, 1, true)) then
             -- Check if this weapon has Warp Ammo enabled (checkbox)
             local bWarpAmmo = DB.getValue(nodeWeapon, "warpammo", 0) == 1;
             
@@ -596,6 +614,15 @@ function hasWarpAmmoWeapon(rSource, sWeaponName)
             end
             
             return bWarpAmmo;
+        elseif sWeaponNameFromList == sWeaponName then
+            local bWarpAmmo = DB.getValue(nodeWeapon, "warpammo", 0) == 1;
+            if not bWarpAmmo then
+                local sProperties = DB.getValue(nodeWeapon, "properties", "");
+                bWarpAmmo = string.find(string.lower(sProperties), "warp ammo") ~= nil;
+            end
+            if bWarpAmmo then
+                return true;
+            end
         end
     end
     
