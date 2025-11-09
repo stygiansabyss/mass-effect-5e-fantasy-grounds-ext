@@ -130,16 +130,21 @@ function checkShields(rSource, rTarget, msgOOB)
         return;
     end
     
-    if nTechArmor > 0 and localMsgOOB.nTotal > 0 then
-        handleTechArmor(aDamageRoll, rSource, rTarget);
+    local nCurrentTotal = tonumber(localMsgOOB.nTotal) or 0;
+    
+    if nTechArmor > 0 and nCurrentTotal > 0 then
+        localMsgOOB = handleTechArmor(aDamageRoll, rSource, rTarget, localMsgOOB);
+        nCurrentTotal = tonumber(localMsgOOB.nTotal) or 0;
     end
 
     -- Shields do not work on melee damage.
-    if nShields > 0 and localMsgOOB.nTotal > 0 and localMsgOOB.range ~= "M" then
-        handleShields(aDamageRoll, rSource, rTarget);
+    if nShields > 0 and nCurrentTotal > 0 and localMsgOOB.range ~= "M" then
+        localMsgOOB = handleShields(aDamageRoll, rSource, rTarget, localMsgOOB);
+        nCurrentTotal = tonumber(localMsgOOB.nTotal) or 0;
     end
 
-    if localMsgOOB.nTotal == 0 then
+    if nCurrentTotal <= 0 then
+        localMsgOOB.nTotal = 0;
         Debug.console("All damage removed by defenses");
         sendNoDamageMessage();
 
@@ -202,7 +207,9 @@ function fixOriginalMsg(remainingDamage)
     originalMsgOOB.sDesc = string.gsub(originalMsgOOB.sDesc, nFirstTotal, nFirstTotal - remainingDamage);
 
     -- Set the roll total to our reduced number.
-    originalMsgOOB.nTotal = remainingDamage;
+    if originalMsgOOB then
+        originalMsgOOB.nTotal = remainingDamage;
+    end
 end
 
 function showBarrierChoiceDialog(rTarget)    
@@ -804,30 +811,25 @@ function handleDefenseUpdate(msgOOB)
     end
 end
 
-function handleTechArmor(rRoll, rSource, rTarget)
-    local nDamage = originalMsgOOB.nTotal;
+function handleTechArmor(rRoll, rSource, rTarget, msgOOB)
+    local localMsgOOB = msgOOB or originalMsgOOB;
+    local nDamage = tonumber(localMsgOOB and localMsgOOB.nTotal or 0) or 0;
     local nTechHP = nTechArmor;
-    local nBlocked;
+    local nBlocked = 0;
     local sTechArmorStatus;
 
-    remainingDamage = nDamage - nTechArmor;
-    nTechHP = nTechHP - nDamage;
-
-    -- Track the amount reduced
-    if nDamage <= nTechArmor then
-        nBlocked = nDamage;
-    else
-        nBlocked = nTechArmor;
+    if nDamage <= 0 or nTechArmor <= 0 then
+        return localMsgOOB;
     end
+    
+    nBlocked = math.min(nDamage, nTechArmor);
+    local remainingDamage = nDamage - nBlocked;
+    nTechHP = nTechHP - nBlocked;
 
     nDamageReduction = nDamageReduction + nBlocked;
 
-    if remainingDamage < 0 then
-        remainingDamage = 0;
-    end
-    if nTechHP < 0 then
-        nTechHP = 0;
-    end
+    remainingDamage = math.max(remainingDamage, 0);
+    nTechHP = math.max(nTechHP, 0);
 
     if nTechHP > 0 then
         sTechArmorStatus = "Yes";
@@ -838,7 +840,15 @@ function handleTechArmor(rRoll, rSource, rTarget)
     nTechArmor = nTechHP;
     DB.setValue(aCTNode, "tech_armor_hp", "number", nTechHP);
     DB.setValue(aCTNode, "tech_armor_status", "string", sTechArmorStatus);
-    originalMsgOOB.nTotal = remainingDamage;
+    
+    if localMsgOOB then
+        localMsgOOB.nTotal = remainingDamage;
+    end
+    if originalMsgOOB then
+        originalMsgOOB.nTotal = remainingDamage;
+    end
+
+    return localMsgOOB;
 end
 
 function hasShieldLightningImmunity(nodeCT)
@@ -887,8 +897,9 @@ function applyShieldDamage(nShieldHP, nRollDamage, remainingDamage, nBlocked, nD
     return nNewShieldHP, nNewRemainingDamage, nNewBlocked, nNewDamageReduction;
 end
 
-function handleShields(rRoll, rSource, rTarget)
-    local nDamage = originalMsgOOB.nTotal;
+function handleShields(rRoll, rSource, rTarget, msgOOB)
+    local localMsgOOB = msgOOB or originalMsgOOB;
+    local nDamage = tonumber(localMsgOOB and localMsgOOB.nTotal or 0) or 0;
     local nShieldHP = nShields;
     local nBlocked = 0;
     local sShieldsStatus;
@@ -951,7 +962,13 @@ function handleShields(rRoll, rSource, rTarget)
     nShields = nShieldHP;
     DB.setValue(aCTNode, "shields", "number", nShieldHP);
     DB.setValue(aCTNode, "shields_status", "string", sShieldsStatus);
+    
+    if localMsgOOB then
+        localMsgOOB.nTotal = remainingDamage;
+    end
     originalMsgOOB.nTotal = remainingDamage;
+
+    return localMsgOOB;
 end
 
 function sendBypassMessage(sType)
